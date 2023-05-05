@@ -64,7 +64,7 @@ class CodeGenerator
         start_block
 
         append "new = function("
-        append_args node.elements
+        walk_node_list node.elements
         append ")"
         start_block
 
@@ -74,7 +74,10 @@ class CodeGenerator
           walk element
           append " = "
           walk element
-          append ",\n#{"\t" * @level}" unless element == node.elements.last
+          unless element == node.elements.last
+            append ","
+            newline
+          end
         end
         end_block
         append "}"
@@ -86,13 +89,13 @@ class CodeGenerator
 
         end_block
       else
-        append_args node.elements
+        walk_node_list node.elements
       end
       append "}"
       newline
     when ArrayLiteral
       append "{"
-      append_args node.elements
+      walk_node_list node.elements
       append "}"
     when HashLiteral
       append "{"
@@ -102,7 +105,10 @@ class CodeGenerator
         walk entry.key
         append " = "
         walk entry.value
-        append ",\n#{"\t" * @level}" unless entry == node.entries.last
+        unless entry == node.entries.last
+          append ","
+          newline
+        end
       end
 
       newline
@@ -112,9 +118,9 @@ class CodeGenerator
       walk_named_tuple node if (walk node.name) == "NamedTuple"
     when MultiAssign
       append "local "
-      append_args node.targets
+      walk_node_list node.targets
       append " = "
-      append_args node.values
+      walk_node_list node.values
       newline
     when Assign
       append "local "
@@ -126,7 +132,7 @@ class CodeGenerator
       append node.names.join "."
     when Block
       append "function("
-      append_args node.args
+      walk_node_list node.args
       append ")"
       start_block
 
@@ -144,7 +150,7 @@ class CodeGenerator
       append node.name
 
       append "("
-      append_args node.args
+      walk_node_list node.args
       append ")"
       start_block
 
@@ -186,7 +192,7 @@ class CodeGenerator
         end
 
         append "("
-        append_args node.args
+        walk_node_list node.args
         unless node.block.nil?
           append ", " unless check_fn
           walk node.block.not_nil!
@@ -204,13 +210,7 @@ class CodeGenerator
         end
       end
     when ClassDef
-      walk node.name
-      append " = {} do"
-      start_block
-
-      end_block
-      append "end"
-      newline
+      walk_class_def node
     else
       puts node.class
     end
@@ -238,7 +238,10 @@ class CodeGenerator
         append arg_name.name
         append " = "
         append arg_name.name
-        append ",\n#{"\t" * @level}" unless arg_name == node.named_args.not_nil!.last
+        unless arg_name == node.named_args.not_nil!.last
+          append ","
+          newline
+        end
       end
     end
     newline
@@ -255,11 +258,78 @@ class CodeGenerator
     newline
   end
 
-  private def append_args(args : Array(ASTNode))
-    args.each do |arg|
-      walk arg
-      append ", " unless arg == args.last
-    end
+  private def walk_class_def(node : ClassDef)
+    append "--classdef" # comment for readability and such
+      newline
+      walk node.name
+      append " = {} do"
+      start_block
+
+      append "local include = {}"; newline
+      append "local idxMeta = setmetatable(Dog, { __index = {} })"; newline
+      append "idxMeta.__type = \""; walk node.name; append "\""; newline
+
+      append "for mixin in ruby.list(include) do"
+      start_block
+      append "for k, v in pairs(mixin) do"
+      start_block
+      append "idxMeta[k] = v"
+      end_block
+      newline
+      append "end"
+
+      end_block
+      newline
+      append "end"
+
+      newline
+      append "local self = setmetatable({}, { __index = idxMeta })"; newline
+      append "self.accessors = setmetatable({}, { __index = idxMeta.accessors or {} })"; newline
+      append "self.getters = setmetatable({}, { __index = idxMeta.getters or {} })"; newline
+      append "self.setters = setmetatable({}, { __index = idxMeta.setters or {} })"; newline
+      append "self.writable = {}"; newline
+      append "self.private = {}"; newline
+      append "setmetatable(self, {"; start_block
+
+      append "__index = function(t, k)"; start_block
+      append "if not self.attr_reader[k] and not self.attr_accessor[k] and self.private[k] then"; start_block
+      append "return nil"
+
+      end_block
+      newline
+      append "end"; newline
+      append "return self.attr_reader[k] or self.attr_accessor[k] or "
+      walk node.name; append "[k]"
+      end_block
+      newline
+      append "end"; newline
+
+      append "__newindex = function(t, k, v)"; start_block
+      append "if t.writable[k] or self.writable[k] or idxMeta.writable[k] then"; start_block
+      append "if self.attr_writer[k] then"; start_block
+      append "self.attr_writer[k] = v"; end_block; newline
+      append "elseif self.attr_accessor[k] then"; start_block
+      append "self.attr_accessor[k] = v"; end_block;
+
+      newline
+      append "end"; end_block
+
+      newline
+      append "else"; start_block
+      append "error()"; end_block
+
+      newline
+      append "end"; end_block
+
+
+      newline
+      append "end"; end_block
+
+      newline
+      append "})"; end_block
+
+      newline
+      append "end"; newline
   end
 
   private def walk_bin_op(node : Call)
@@ -304,6 +374,13 @@ class CodeGenerator
     get_bin_op?(name) != nil
   end
 
+  private def walk_node_list(args : Array(ASTNode))
+    args.each do |arg|
+      walk arg
+      append ", " unless arg == args.last
+    end
+  end
+
   private def end_block
     @level -= 1
     append("\t" * @level)
@@ -312,11 +389,10 @@ class CodeGenerator
   private def start_block
     @level += 1
     newline
-    append("\t" * @level)
   end
 
   private def newline
-    @out += "\n"
+    @out += "\n#{"\t" * @level}"
   end
 
   private def append(content : String)
