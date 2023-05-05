@@ -1,5 +1,4 @@
-def say_hello(name : String)
-  puts "hello #{name}"
-end
+tuple = {id : Int32, name : String}
 
-say_hello "world"
+person = tuple.new(1, "Alice")
+puts person.name  # Output: Alice

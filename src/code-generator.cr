@@ -17,9 +17,12 @@ class CodeGenerator
 
   private def walk(node : ASTNode | Float64 | String)
     case node
+    when Nop
+    when TypeDeclaration
+      walk node.var
     when Expressions
       node.expressions.each { |expr| walk expr }
-    when Var
+    when Var, Global
       append node.name
     when Number
       append node.to_s
@@ -40,14 +43,46 @@ class CodeGenerator
       append '"'.to_s
       append node.value.to_s
       append '"'.to_s
-    when NumberLiteral
-      append node.value
+    when NilLiteral
+      append "nil"
+    when SymbolLiteral
+      append '"'.to_s
+      append node.value.to_s.upcase
+      append '"'.to_s
+    when NumberLiteral, BoolLiteral
+      append node.value.to_s
+    when TupleLiteral
+      append "{"
+      block
+
+      append "new = function("
+      append_args node.elements
+      append ")"
+      block
+
+      append "return {"
+      block
+      node.elements.each do |element|
+        walk element
+        append " = "
+        walk element
+        append ",\n#{"\t" * @level}" unless element == node.elements.last
+      end
+      newline
+      end_block
+      append "}"
+      newline
+
+      end_block
+      append "end"
+      newline
+
+      end_block
+      append "}"
+      newline
     when ArrayLiteral
       append "{"
-      node.elements.each do |arr_value|
-        walk arr_value
-        append ", " unless arr_value == node.elements.last
-      end
+      append_args node.elements
       append "}"
     when HashLiteral
       append "{"
@@ -63,6 +98,12 @@ class CodeGenerator
       newline
       end_block
       append "}"
+    when MultiAssign
+      append "local "
+      append_args node.targets
+      append " = "
+      append_args node.values
+      newline
     when Assign
       append "local "
       target = walk node.target
@@ -73,7 +114,7 @@ class CodeGenerator
       append node.names.join "."
     when Block
       append "function("
-      node.args.each { |arg| walk arg }
+      append_args node.args
       append ")"
       block
 
@@ -89,10 +130,7 @@ class CodeGenerator
       append node.name
 
       append "("
-      node.args.each do |arg|
-        walk arg
-        append ", " unless arg == node.args.last
-      end
+      append_args node.args
       append ")"
       block
 
@@ -113,6 +151,7 @@ class CodeGenerator
         walk_postfix node
       else
         check_fn = node.args.size < 1
+        call_op = node.name == "new" ? "." : ":"
         if check_fn
           append "local _ = " if @out.chars.last == '\n'
           append "(typeof("
@@ -120,7 +159,7 @@ class CodeGenerator
           append "."
         else
           walk node.obj.not_nil! unless node.obj.nil?
-          append ":" unless node.obj.nil?
+          append call_op unless node.obj.nil?
         end
 
         def_name = node.name.gsub(/puts/, "print")
@@ -128,12 +167,12 @@ class CodeGenerator
         if check_fn
           append ") == \"function\" and "
           walk node.obj.not_nil! unless node.obj.nil?
-          append ":"
+          append call_op
           append def_name
         end
 
         append "("
-        node.args.each { |arg| walk arg }
+        append_args node.args
         unless node.block.nil?
           append ", " unless check_fn
           walk node.block.not_nil!
@@ -157,6 +196,13 @@ class CodeGenerator
       newline
     else
       puts node.class
+    end
+  end
+
+  private def append_args(args : Array(ASTNode))
+    args.each do |arg|
+      walk arg
+      append ", " unless arg == args.last
     end
   end
 
