@@ -3,6 +3,7 @@ require "compiler/crystal/syntax"; include Crystal
 class CodeGenerator
   @out = ""
   @level = 0
+  @testing = true
   @ast : ASTNode
 
   def initialize(source : String)
@@ -53,31 +54,34 @@ class CodeGenerator
       append node.value.to_s
     when TupleLiteral
       append "{"
-      block
+      if node.elements.all? { |e| e.is_a?(Var) || e.is_a?(Global) || e.is_a?(TypeDeclaration) }
+        block
 
-      append "new = function("
-      append_args node.elements
-      append ")"
-      block
+        append "new = function("
+        append_args node.elements
+        append ")"
+        block
 
-      append "return {"
-      block
-      node.elements.each do |element|
-        walk element
-        append " = "
-        walk element
-        append ",\n#{"\t" * @level}" unless element == node.elements.last
+        append "return {"
+        block
+        node.elements.each do |element|
+          walk element
+          append " = "
+          walk element
+          append ",\n#{"\t" * @level}" unless element == node.elements.last
+        end
+        end_block
+        append "}"
+        newline
+
+        end_block
+        append "end"
+        newline
+
+        end_block
+      else
+        append_args node.elements
       end
-      newline
-      end_block
-      append "}"
-      newline
-
-      end_block
-      append "end"
-      newline
-
-      end_block
       append "}"
       newline
     when ArrayLiteral
@@ -98,6 +102,42 @@ class CodeGenerator
       newline
       end_block
       append "}"
+    when Generic
+      append "{"
+      block
+
+      append "new = function("
+      unless node.named_args.nil?
+        node.named_args.not_nil!.each do |arg_name|
+          append arg_name.name
+          append ", " unless arg_name == node.named_args.not_nil!.last
+        end
+      end
+      append ")"
+      block
+
+      append "return {"
+      block
+      unless node.named_args.nil?
+        node.named_args.not_nil!.each do |arg_name|
+          append arg_name.name
+          append " = "
+          append arg_name.name
+          append ",\n#{"\t" * @level}" unless arg_name == node.named_args.not_nil!.last
+        end
+      end
+      newline
+      end_block
+      append "}"
+      newline
+
+      end_block
+      append "end"
+      newline
+
+      end_block
+      append "}"
+      newline
     when MultiAssign
       append "local "
       append_args node.targets
@@ -123,6 +163,8 @@ class CodeGenerator
       newline
       end_block
       append "end"
+    when NamedArgument
+      walk node.value
     when Arg
       append node.name
     when Def
@@ -150,11 +192,11 @@ class CodeGenerator
       elsif is_postfix?(node.name)
         walk_postfix node
       else
-        check_fn = node.args.size < 1
+        check_fn = node.args.size < 1 && node.name != "new"
         call_op = node.name == "new" ? "." : ":"
         if check_fn
           append "local _ = " if @out.chars.last == '\n'
-          append "(typeof("
+          append "(type#{!@testing ? "of" : ""}("
           walk node.obj.not_nil! unless node.obj.nil?
           append "."
         else
@@ -185,8 +227,8 @@ class CodeGenerator
           append "."
           append def_name
           append ")"
-        else
-          newline
+        # else
+        #   newline
         end
       end
     when Require
