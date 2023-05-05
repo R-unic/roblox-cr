@@ -1,6 +1,18 @@
-# TODO: Write documentation for `Roblox::Cr`
-module Roblox::Cr
-  VERSION = "0.1.0"
+require "compiler/crystal/syntax"; include Crystal
 
-  # TODO: Put your code here
+filename = "src/test.cr"
+code = File.read(filename)
+parser = ::Parser.new(code)
+ast = parser.parse
+
+def walk(node : ASTNode)
+  case node
+  when Crystal::Expressions
+    node.expressions.each { |expr| walk expr }
+  else
+    puts node.class
+  end
 end
+
+walk ast
+
