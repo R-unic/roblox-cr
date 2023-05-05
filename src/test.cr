@@ -1,2 +1,5 @@
-a = {"big" => "cock", "small" => "weewee"}
-puts a["big"]
+def say_hello(name : String)
+  puts "hello #{name}"
+end
+
+say_hello "world"
