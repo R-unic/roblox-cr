@@ -103,41 +103,7 @@ class CodeGenerator
       end_block
       append "}"
     when Generic
-      append "{"
-      block
-
-      append "new = function("
-      unless node.named_args.nil?
-        node.named_args.not_nil!.each do |arg_name|
-          append arg_name.name
-          append ", " unless arg_name == node.named_args.not_nil!.last
-        end
-      end
-      append ")"
-      block
-
-      append "return {"
-      block
-      unless node.named_args.nil?
-        node.named_args.not_nil!.each do |arg_name|
-          append arg_name.name
-          append " = "
-          append arg_name.name
-          append ",\n#{"\t" * @level}" unless arg_name == node.named_args.not_nil!.last
-        end
-      end
-      newline
-      end_block
-      append "}"
-      newline
-
-      end_block
-      append "end"
-      newline
-
-      end_block
-      append "}"
-      newline
+      walk_named_tuple node if (walk node.name) == "NamedTuple"
     when MultiAssign
       append "local "
       append_args node.targets
@@ -241,6 +207,45 @@ class CodeGenerator
     end
   end
 
+  private def walk_named_tuple(node : Generic)
+    @out = @out.gsub(/NamedTuple/, "")
+    append "{"
+    block
+
+    append "new = function("
+    unless node.named_args.nil?
+      node.named_args.not_nil!.each do |arg_name|
+        append arg_name.name
+        append ", " unless arg_name == node.named_args.not_nil!.last
+      end
+    end
+    append ")"
+    block
+
+    append "return {"
+    block
+    unless node.named_args.nil?
+      node.named_args.not_nil!.each do |arg_name|
+        append arg_name.name
+        append " = "
+        append arg_name.name
+        append ",\n#{"\t" * @level}" unless arg_name == node.named_args.not_nil!.last
+      end
+    end
+    newline
+    end_block
+    append "}"
+    newline
+
+    end_block
+    append "end"
+    newline
+
+    end_block
+    append "}"
+    newline
+  end
+
   private def append_args(args : Array(ASTNode))
     args.each do |arg|
       walk arg
@@ -307,5 +312,6 @@ class CodeGenerator
 
   private def append(content : String)
     @out += content
+    content
   end
 end
