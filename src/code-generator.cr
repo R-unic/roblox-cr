@@ -1,5 +1,6 @@
 require "compiler/crystal/syntax"; include Crystal
 
+# TODO: make lua library
 class CodeGenerator
   @out = ""
   @level = 0
@@ -23,6 +24,11 @@ class CodeGenerator
       walk node.var
     when Expressions
       node.expressions.each { |expr| walk expr }
+    when Require # yeah im gonna have to make a custom require function
+      append "require("
+      walk node.string
+      append ")"
+      newline
     when Var, Global
       append node.name
     when Number
@@ -55,15 +61,15 @@ class CodeGenerator
     when TupleLiteral
       append "{"
       if node.elements.all? { |e| e.is_a?(Var) || e.is_a?(Global) || e.is_a?(TypeDeclaration) }
-        block
+        start_block
 
         append "new = function("
         append_args node.elements
         append ")"
-        block
+        start_block
 
         append "return {"
-        block
+        start_block
         node.elements.each do |element|
           walk element
           append " = "
@@ -90,7 +96,7 @@ class CodeGenerator
       append "}"
     when HashLiteral
       append "{"
-      block
+      start_block
 
       node.entries.each do |entry|
         walk entry.key
@@ -122,7 +128,7 @@ class CodeGenerator
       append "function("
       append_args node.args
       append ")"
-      block
+      start_block
 
       walk node.body
 
@@ -140,7 +146,7 @@ class CodeGenerator
       append "("
       append_args node.args
       append ")"
-      block
+      start_block
 
       walk node.body
 
@@ -197,10 +203,13 @@ class CodeGenerator
         #   newline
         end
       end
-    when Require
-      append "require("
-      walk node.string
-      append ")"
+    when ClassDef
+      walk node.name
+      append " = {} do"
+      start_block
+
+      end_block
+      append "end"
       newline
     else
       puts node.class
@@ -210,7 +219,7 @@ class CodeGenerator
   private def walk_named_tuple(node : Generic)
     @out = @out.gsub(/NamedTuple/, "")
     append "{"
-    block
+    start_block
 
     append "new = function("
     unless node.named_args.nil?
@@ -220,10 +229,10 @@ class CodeGenerator
       end
     end
     append ")"
-    block
+    start_block
 
     append "return {"
-    block
+    start_block
     unless node.named_args.nil?
       node.named_args.not_nil!.each do |arg_name|
         append arg_name.name
@@ -300,7 +309,7 @@ class CodeGenerator
     append("\t" * @level)
   end
 
-  private def block
+  private def start_block
     @level += 1
     newline
     append("\t" * @level)
