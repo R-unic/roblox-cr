@@ -1,2 +1,2 @@
-a = 1
-puts a
+a = {"big" => "cock", "small" => "weewee"}
+puts a["big"]
