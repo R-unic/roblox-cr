@@ -25,6 +25,10 @@ class CodeGenerator
   end
 
   private def append_dependencies
+    if @testing
+      append "package.path = \"#{ENV["RBXCR"]}/include/?.lua;\" .. package.path"
+      newline
+    end
     append "local Crystal = require("
     unless @testing
       case @generation_mode
@@ -37,7 +41,7 @@ class CodeGenerator
       end
       append ".Crystal.include.RuntimeLib)"
     else
-      append "\"./include/RuntimeLib\")"
+      append "\"RuntimeLib\")"
     end
     newline
   end
