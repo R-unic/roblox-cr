@@ -1,6 +1,6 @@
 require "./code-generator"
 
-filename = "src/test.cr"
+filename = "test.cr"
 code = File.read(filename)
 codegen = CodeGenerator.new(code)
-puts codegen.generate
+File.write("test.lua", codegen.generate)

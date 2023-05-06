@@ -5,15 +5,19 @@ class CodeGenerator
   @out = ""
   @level = 0
   @testing = true
-  @ast : ASTNode
+  @ast : ASTNode?
 
   def initialize(source : String)
-    parser = Parser.new(source)
-    @ast = parser.parse
+    begin
+      parser = Parser.new(source)
+      @ast = parser.parse
+    rescue ex : Exception
+      puts "Crystal compilation error: #{ex.message}"
+    end
   end
 
   def generate
-    walk @ast
+    walk @ast.not_nil! unless @ast.nil?
     @out
   end
 
