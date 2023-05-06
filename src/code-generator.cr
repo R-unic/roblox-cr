@@ -97,7 +97,7 @@ class CodeGenerator
       node.value
     when BoolLiteral
       append node.value.to_s
-      node.value.to_s.to_f64
+      node.value
     when TupleLiteral
       append "{"
       if node.elements.all? { |e| e.is_a?(Var) || e.is_a?(Global) || e.is_a?(TypeDeclaration) }
@@ -247,6 +247,24 @@ class CodeGenerator
     when ClassVar
       append "#{class_node.not_nil!.name}."
       append node.name.gsub(/@/, "")
+    when If
+      append "if "
+      walk node.cond
+      append " then"
+      start_block
+
+      walk node.then
+
+      end_block
+      newline
+      append "else"
+      start_block
+
+      walk node.else
+
+      end_block
+      newline
+      append "end"
     else
       puts node.class
     end
