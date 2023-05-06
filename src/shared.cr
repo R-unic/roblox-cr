@@ -7,10 +7,11 @@
 # the bottom of the dependency chain.
 enum Exit
   InputInvalid = 0x002
-  NoConfig = 0x004
-  InvalidConfig = 0x008
-  NoRootDir = 0x016
-  CodeGenFailed = 0x032
+  FailedToCopyInclude = 0x002
+  NoConfig = 0x008
+  InvalidConfig = 0x016
+  NoRootDir = 0x032
+  CodeGenFailed = 0x064
 end
 
 enum GenerationMode

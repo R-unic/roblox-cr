@@ -1,4 +1,5 @@
 require "./code-generator"
+require "file_utils"
 require "json"
 
 class RobloxCrystalConfig
@@ -11,7 +12,6 @@ class RobloxCrystalConfig
   ) end
 end
 
-# TODO: copy include/ folder into project folder
 class Transpiler
   @@rbxcr_path : String = ENV.has_key?("RBXCR") ? ENV["RBXCR"] : "./"
 
@@ -37,6 +37,13 @@ class Transpiler
 
   def self.do_directory(dir_path : String, testing : Bool = false)
     ENV["RBXCR"] = File.dirname File.dirname(__FILE__) if @@rbxcr_path == "./"
+    begin
+      project_include = "#{dir_path}/include"
+      FileUtils.rm_r(project_include) if File.directory?(project_include)
+      FileUtils.cp_r "#{ENV["RBXCR"]}/include", project_include
+    rescue ex : Exception
+      abort "Failed to copy Lua libraries: #{ex.message}", Exit::FailedToCopyInclude.value
+    end
     begin
       config_json = File.read("#{dir_path}/config.crystal.json")
 
