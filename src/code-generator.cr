@@ -479,12 +479,16 @@ class CodeGenerator
   end
 
   private def walk_bin_op(node : Call)
+    match = get_bin_op?(node.name)
     walk node.obj.not_nil! unless node.obj.nil?
-    op = node.name.chars.last.to_s
+    op = match.not_nil![0].to_s
     left = node.name[-node.name.size..-2]
 
-    append "." unless node.obj.nil? || left == ""
-    append left
+    unless node.obj.nil? || left == "" || !match.nil?
+      append "."
+      append left
+    end
+
     append " "
     append op
     append " "
@@ -514,7 +518,7 @@ class CodeGenerator
   end
 
   private def get_bin_op?(name : String) : Regex::MatchData | Nil
-    name.match(/[\+\-\*\/\%\|\&\^\~\!\=\<\>\?\:\.]/)
+    /==/.match(name) || name.match(/[\+\-\*\/\%\|\&\^\~\!\=\<\>\?\:\.]/)
   end
 
   private def is_bin_op?(name : String) : Bool
