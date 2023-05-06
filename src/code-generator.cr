@@ -1,13 +1,13 @@
 require "compiler/crystal/syntax"; include Crystal
+require "./shared"
 
-# TODO: make lua library
 class CodeGenerator
   @out = ""
   @level = 0
   @testing = true
   @ast : ASTNode?
 
-  def initialize(source : String)
+  def initialize(source : String, @generation_mode : GenerationMode)
     begin
       parser = Parser.new(source)
       @ast = parser.parse
@@ -17,8 +17,27 @@ class CodeGenerator
   end
 
   def generate
+    append_dependencies
     walk @ast.not_nil! unless @ast.nil?
     @out
+  end
+
+  def append_dependencies
+    append "local Crystal = require("
+    unless @testing
+      case @generation_mode
+      when GenerationMode::Client
+        append "game.Players.LocalPlayer.PlayerScripts"
+      when GenerationMode::Server
+        append "game.ServerScriptService"
+      when GenerationMode::Module
+        append "game.ReplicatedStorage"
+      end
+      append ".Crystal.include.RuntimeLib)"
+    else
+      append "\"./include/RuntimeLib\")"
+    end
+    newline
   end
 
   private def walk(node : ASTNode | Float64 | String,
@@ -53,7 +72,13 @@ class CodeGenerator
         end
         append " .. " unless expr == node.expressions.last
       end
-    when StringLiteral, CharLiteral
+    when RangeLiteral
+      append "Crystal.range("
+      walk node.from
+      append ", "
+      walk node.to
+      append ")"
+    when StringLiteral, CharLiteral, RegexLiteral
       append '"'.to_s
       append node.value.to_s
       append '"'.to_s
@@ -63,8 +88,12 @@ class CodeGenerator
       append '"'.to_s
       append node.value.to_s.upcase
       append '"'.to_s
-    when NumberLiteral, BoolLiteral
+    when NumberLiteral
       append node.value.to_s
+      node.value
+    when BoolLiteral
+      append node.value.to_s
+      node.value.to_s.to_f64
     when TupleLiteral
       append "{"
       if node.elements.all? { |e| e.is_a?(Var) || e.is_a?(Global) || e.is_a?(TypeDeclaration) }
@@ -145,8 +174,8 @@ class CodeGenerator
 
       walk node.body
 
-      newline
       end_block
+      newline
       append "end"
     when NamedArgument
       walk node.value
@@ -364,42 +393,56 @@ class CodeGenerator
     newline
   end
 
-  private def walk_fn_call(node : Call)
-    check_fn = node.args.size < 1 && node.name != "new"
-    call_op = node.name == "new" ? "." : ":"
-    if check_fn
-      append "local _ = " if @out.chars.last == '\n'
-      append "(type#{!@testing ? "of" : ""}("
-      walk node.obj.not_nil! unless node.obj.nil?
-      append "."
-    else
-      walk node.obj.not_nil! unless node.obj.nil?
-      append call_op unless node.obj.nil?
-    end
-
-    def_name = node.name.gsub(/puts/, "print")
-    append def_name
-    if check_fn
-      append ") == \"function\" and "
-      walk node.obj.not_nil! unless node.obj.nil?
-      append call_op
-      append def_name
-    end
-
-    append "("
+  private def walk_call_args(node : Call, last : Bool)
     walk_node_list node.args
     unless node.block.nil?
-      append ", " unless check_fn
+      append ", " unless last
       walk node.block.not_nil!
     end
-    append ")"
+  end
 
-    if check_fn
-      append " or "
-      walk node.obj.not_nil! unless node.obj.nil?
-      append "."
+  private def walk_fn_call(node : Call)
+    macros = ["times"]
+    def_name = node.name.gsub(/puts/, "print")
+    check_fn = node.args.size < 1 && def_name != "new"
+    if macros.includes?(def_name)
+      append "Crystal."
       append def_name
+      append "("
+      walk node.obj.not_nil! unless node.obj.nil?
+      append ", "
+      walk_call_args node, check_fn
       append ")"
+    else
+      call_op = def_name == "new" ? "." : ":"
+      if check_fn
+        append "local _ = " if @out.chars.last == '\n'
+        append "(type#{!@testing ? "of" : ""}("
+        walk node.obj.not_nil! unless node.obj.nil?
+        append "."
+      else
+        walk node.obj.not_nil! unless node.obj.nil?
+        append call_op unless node.obj.nil?
+      end
+
+      append def_name
+      if check_fn
+        append ") == \"function\" and "
+        walk node.obj.not_nil! unless node.obj.nil?
+        append call_op
+        append def_name
+      end
+
+      append "("
+      walk_call_args node, check_fn
+      append ")"
+      if check_fn
+        append " or "
+        walk node.obj.not_nil! unless node.obj.nil?
+        append "."
+        append def_name
+        append ")"
+      end
     end
   end
 
