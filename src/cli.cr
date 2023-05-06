@@ -6,6 +6,7 @@ require "option_parser"
 module CLI
   @@watch = false
   @@test = false
+  @@init = false
   @@path = "."
 
   def self.run
@@ -17,6 +18,9 @@ module CLI
       opts.on("-t", "--test", "Enable testing mode (for testing code without syncing to Roblox)") do
         @@test = true
       end
+      opts.on("--init", "Enable testing mode (for testing code without syncing to Roblox)") do
+        @@init = true
+      end
       opts.on("-DDIR", "--dir=DIR", "Set the directory to compile") do |dir|
         @@path = dir
       end
@@ -26,6 +30,7 @@ module CLI
       end
     end
 
+    return if @@init
     result = Benchmark.measure do
       parser.parse(ARGV)
       Transpiler.do_directory dir_path: @@path, testing: @@test
