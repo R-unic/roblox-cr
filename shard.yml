@@ -8,6 +8,10 @@ targets:
   roblox-cr:
     main: src/roblox-cr.cr
 
+dependencies:
+  readline:
+    github: crystal-lang/crystal-readline
+
 crystal: 1.8.1
 
 license: MIT

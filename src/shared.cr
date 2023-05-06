@@ -6,16 +6,32 @@
 # like codegen, things that are at
 # the bottom of the dependency chain.
 enum Exit
-  InputInvalid = 0x002
-  FailedToCopyInclude = 0x004
-  NoConfig = 0x008
-  InvalidConfig = 0x016
-  NoRootDir = 0x032
-  CodeGenFailed = 0x064
+  FailedToWriteDefaultConfig = 0x000002 # cli stuff
+  FailedToWriteDefaultProject = 0x000004
+  FailedToCreateStructure = 0x000008
+
+  InputInvalid = 0x000016
+  FailedToCopyInclude = 0x000032
+  NoConfig = 0x000064
+  InvalidConfig = 0x000128
+  NoRootDir = 0x000256
+  CodeGenFailed = 0x000512
 end
 
 enum GenerationMode
   Client
   Server
   Module
+end
+
+class RobloxCrystalConfig
+  property name : String
+  property rootDir : String
+  property outDir : String
+
+  def initialize(
+    @name = "rbxcr-project",
+    @rootDir = "src",
+    @outDir = "dist"
+  ) end
 end

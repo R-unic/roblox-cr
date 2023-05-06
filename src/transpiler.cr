@@ -2,16 +2,6 @@ require "./code_generator"
 require "file_utils"
 require "json"
 
-class RobloxCrystalConfig
-  property rootDir : String
-  property outDir : String
-
-  def initialize(
-    @rootDir = "src",
-    @outDir = "dist"
-  ) end
-end
-
 module Transpiler
   @@rbxcr_path : String = ENV.has_key?("RBXCR") ? ENV["RBXCR"] : "./"
 
@@ -49,7 +39,7 @@ module Transpiler
     begin
       config_json = File.read("#{dir_path}/config.crystal.json")
       begin
-        (JSON.parse(config_json).as?(RobloxCrystalConfig) unless config_json.nil?) || RobloxCrystalConfig.new("src", "dist")
+        (JSON.parse(config_json).as?(RobloxCrystalConfig) unless config_json.nil?) || RobloxCrystalConfig.new("robloxcr-project", "src", "dist")
       rescue ex : Exception
         abort "Error parsing config: #{ex.message}", Exit::InvalidConfig.value
       end
