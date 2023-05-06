@@ -1,2 +1,2 @@
 require "spec"
-require "../src/roblox-cr"
+require "../src/code_generator"
