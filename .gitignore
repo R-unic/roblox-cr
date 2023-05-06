@@ -3,5 +3,4 @@
 /bin/
 /.shards/
 *.dwarf
-test.lua
-test.cr
+testing

@@ -20,7 +20,8 @@ class Transpiler
     config : RobloxCrystalConfig,
     testing : Bool = false
   )
-    base_name = path.split(".").first
+    base_name = path.split(".cr").first
+    puts base_name
     source = File.read("#{base_name}.cr")
     codegen = CodeGenerator.new(source, generation_mode, testing)
 
@@ -40,7 +41,7 @@ class Transpiler
             generation_mode = GenerationMode::Module
             if path.includes?(".client.")
               generation_mode = GenerationMode::Client
-            else
+            elsif path.includes?(".server.")
               generation_mode = GenerationMode::Server
             end
 
