@@ -212,6 +212,17 @@ class CodeGenerator
         append "end"
         newline
       end
+    when Not
+      append "not "
+      walk node.exp
+    when And
+      walk node.left
+      append " and "
+      walk node.right
+    when Or
+      walk node.left
+      append " or "
+      walk node.right
     when Call
       if is_bin_op?(node.name)
         walk_bin_op node
