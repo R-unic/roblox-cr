@@ -7,7 +7,7 @@
 # the bottom of the dependency chain.
 enum Exit
   InputInvalid = 0x002
-  FailedToCopyInclude = 0x002
+  FailedToCopyInclude = 0x004
   NoConfig = 0x008
   InvalidConfig = 0x016
   NoRootDir = 0x032
