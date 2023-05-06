@@ -30,7 +30,7 @@ class CodeGenerator
     when TypeDeclaration
       walk node.var
     when Expressions
-      node.expressions.each { |expr| walk expr }
+      node.expressions.each { |expr| walk expr, class_member, class_node }
     when Require # yeah im gonna have to make a custom require function
       append "require("
       walk node.string
@@ -153,25 +153,32 @@ class CodeGenerator
     when Arg
       append node.name
     when Def
-      append "local " if class_member.nil?
-      append "function "
-      if class_member
-        walk class_node.not_nil!.name
-        append ":"
+      if class_member ? node.name != "initialize" : true
+        append "local " if class_member.nil?
+        append "function "
+        if class_member
+          walk class_node.not_nil!.name
+          puts node.body
+          append ":"
+        end
+        unless node.receiver.nil?
+          walk node.receiver.not_nil!
+          append "."
+        end
+        append node.name
+
+        append "("
+        walk_node_list node.args
+        append ")"
+        start_block
+
+        walk node.body
+
+        end_block
+        newline
+        append "end"
+        newline
       end
-      append node.name
-
-      append "("
-      walk_node_list node.args
-      append ")"
-      start_block
-
-      walk node.body
-
-      end_block
-      newline
-      append "end"
-      newline
     when Call
       if is_bin_op?(node.name)
         walk_bin_op node
@@ -182,11 +189,31 @@ class CodeGenerator
         append ")"
       elsif is_postfix?(node.name)
         walk_postfix node
+      elsif node.name == "getter" || node.name == "setter" || node.name == "property"
+        append node.name
+        append "(self, "
+        walk node.args.first.to_s.split(" : ").first
+        append ")"
+        newline
       else
         walk_fn_call node
       end
     when ClassDef
       walk_class_def node
+    when InstanceVar
+      chop 6 # remove the "local" from the previous Assign node
+      append "self."
+      puts node.visibility
+      case node.visibility
+      when Visibility::Public
+
+      else
+        append "private."
+      end
+      append node.name.gsub(/@/, "")
+    when ClassVar
+      append "#{class_node.not_nil!.name}."
+      append node.name.gsub(/@/, "")
     else
       puts node.class
     end
@@ -199,25 +226,18 @@ class CodeGenerator
     append " = {} do"
     start_block
 
-    append "function "; walk _class.name; append ".new("
-    append ")"
-    start_block
-
+    walk _class.body, class_member: true, class_node: _class unless _class.body.is_a?(Call)
     walk_class_ctor _class
-
-    newline
-    append "end"
-    newline
-
-    newline
-    walk _class.body, class_member: true, class_node: _class
-    end_block
 
     newline
     append "end"; newline
   end
 
   private def walk_class_ctor(_class : ClassDef)
+    append "function "; walk _class.name; append ".new("
+    append ")"
+    start_block
+
     append "local include = {}"; newline
     append "local meta = setmetatable("; walk _class.name; append ", { __index = {} })"; newline
     append "meta.__class = \""; walk _class.name; append "\""; newline
@@ -246,6 +266,17 @@ class CodeGenerator
     append "self.setters = setmetatable({}, { __index = meta.setters or {} })"; newline
     append "self.writable = {}"; newline
     append "self.private = {}"; newline
+
+    # Find a Def node with the name "initialize"
+    newline
+    initializer_def = _class.body.is_a?(Expressions) ?
+      _class.body.as(Expressions).expressions.find { |expr| expr.is_a?(Def) && expr.as(Def).name == "initialize" }
+      : (_class.body.is_a?(Def) && _class.body.as(Def).name == "initialize" ? _class.body.as(Def) : nil)
+
+    unless initializer_def.nil?
+      walk _class.body unless _class.body.as(Expressions).expressions.pop.is_a?(Def)
+      walk initializer_def.as(Def).body
+    end
 
     newline
     append "return setmetatable(self, {"; start_block
@@ -280,12 +311,15 @@ class CodeGenerator
     newline
     append "end"; end_block
 
-
     newline
     append "end"; end_block
 
     newline
     append "})"; end_block
+
+    newline
+    append "end"
+    end_block
   end
 
   private def walk_named_tuple(node : Generic)
@@ -383,6 +417,7 @@ class CodeGenerator
     newline if op == "="
   end
 
+  # Walk postfix operators such as `[]`
   private def walk_postfix(node : Call)
     left = node.name.chars.first.to_s
     right = node.name.chars.last.to_s
@@ -411,6 +446,7 @@ class CodeGenerator
     get_bin_op?(name) != nil
   end
 
+  # Walks a list of nodes appending a comma between each
   private def walk_node_list(args : Array(ASTNode))
     args.each do |arg|
       walk arg
@@ -418,20 +454,29 @@ class CodeGenerator
     end
   end
 
+  # Ends a block
   private def end_block
     @level -= 1
     append("\t" * @level)
   end
 
+  # Starts a block and creates a newline
   private def start_block
     @level += 1
     newline
   end
 
+  # Chop the last `idx` characters off out the output
+  private def chop(idx : UInt32)
+    @out = @out[0..(-(idx.to_i + 1))]
+  end
+
+  # Add a newline character plus the current tab level
   private def newline
     @out += "\n#{"\t" * @level}"
   end
 
+  # Append `content` onto the output
   private def append(content : String)
     @out += content
     content
