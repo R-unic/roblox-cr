@@ -12,8 +12,11 @@ class RobloxCrystalConfig
   ) end
 end
 
+# TODO: copy include/ folder into project folder
 class Transpiler
-  def self.do_file(
+  @@rbxcr_path : String = ENV.has_key?("RBXCR") ? ENV["RBXCR"] : "./"
+
+  private def self.do_file(
     path : String,
     parent_dir : String,
     generation_mode : GenerationMode,
@@ -21,7 +24,6 @@ class Transpiler
     testing : Bool = false
   )
     base_name = path.split(".cr").first
-    puts base_name
     source = File.read("#{base_name}.cr")
     codegen = CodeGenerator.new(source, generation_mode, testing)
 
@@ -31,6 +33,7 @@ class Transpiler
   end
 
   def self.do_directory(dir_path : String, testing : Bool = false)
+    ENV["RBXCR"] = File.dirname File.dirname(__FILE__) if @@rbxcr_path == "./"
     begin
       config_json = File.read("#{dir_path}/config.crystal.json")
 
