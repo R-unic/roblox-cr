@@ -59,11 +59,32 @@ module Transpiler
     end
   end
 
+  private def self.check_project_structure(dir_path : String, config : RobloxCrystalConfig)
+    return if !File.directory? dir_path
+    FileUtils.mkdir_p File.join(dir_path, config.outDir)
+    FileUtils.mkdir_p File.join(dir_path, config.rootDir)
+    FileUtils.mkdir_p File.join(dir_path, config.rootDir, "client")
+    FileUtils.mkdir_p File.join(dir_path, config.rootDir, "server")
+    FileUtils.mkdir_p File.join(dir_path, config.rootDir, "shared")
+  end
+
+  def self.create_directory_structure(dir_path : String, config : RobloxCrystalConfig)
+    # create directories in dist/ based on structure of src/
+    Dir.glob "#{dir_path}/**" do |path|
+      next unless File.directory? path
+      dist_path = path.gsub("#{dir_path}", File.join(dir_path, "../dist"))
+      FileUtils.mkdir(dist_path) unless File.directory? dist_path # it exists and is a folder
+    end
+  end
+
   def self.do_directory(dir_path : String, testing : Bool = false)
     ENV["RBXCR"] = File.dirname File.dirname(__FILE__) if @@rbxcr_path == "./"
     config = get_config dir_path
+    check_project_structure dir_path, config
+
     begin
-      Dir.glob("#{dir_path}/#{config.rootDir}/*") do |path|
+      create_directory_structure File.join(dir_path, config.rootDir), config # create directories in dist/
+      Dir.glob File.join(dir_path, config.rootDir, "**/*.cr") do |path|
         generation_mode = GenerationMode::Module
         if path.includes?(".client.")
           generation_mode = GenerationMode::Client
@@ -71,13 +92,13 @@ module Transpiler
           generation_mode = GenerationMode::Server
         end
 
-        do_file(
-          path,
-          dir_path,
-          generation_mode,
-          config,
-          testing
-        )
+        # copy non-crystal files
+        FileUtils.cp_r(path, dir_path) unless path.ends_with? ".cr"
+
+        # transpile .cr file and write to .lua file in dist/
+        lua_path = path.gsub(File.join(dir_path, config.rootDir), File.join(dir_path, config.outDir)).gsub(".cr", ".lua")
+        lua_dir = File.dirname lua_path
+        do_file(path, dir_path, generation_mode, config, testing)
       end
     rescue ex : Exception
       abort "Error transpiling: Root directory '#{dir_path}/#{config.rootDir}' does not exist.", Exit::NoRootDir.value
