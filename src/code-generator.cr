@@ -2,11 +2,14 @@ require "compiler/crystal/syntax"; include Crystal
 require "./shared"
 
 class CodeGenerator
+  @ast : ASTNode?
   @out = ""
   @level = 0
   @testing = true
-  @macros = ["times", "each", "each_with_index"]
-  @ast : ASTNode?
+  @macros = [
+    "times", "each", "each_with_index",
+    "to_s", "to_f64", "to_f32", "to_f", "to_i64", "to_i32", "to_i", "as"
+  ]
 
   def initialize(source : String, @generation_mode : GenerationMode)
     begin
@@ -410,7 +413,7 @@ class CodeGenerator
       append def_name
       append "("
       walk node.obj.not_nil! unless node.obj.nil?
-      append ", "
+      append ", " unless node.obj.nil? || check_fn
       walk_call_args node, check_fn
       append ")"
     else
@@ -451,7 +454,7 @@ class CodeGenerator
     op = node.name.chars.last.to_s
     left = node.name[-node.name.size..-2]
 
-    append "." unless node.obj.nil?
+    append "." unless node.obj.nil? || left == ""
     append left
     append " "
     append op
