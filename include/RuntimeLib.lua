@@ -3,7 +3,7 @@ local Crystal = {}
 function Crystal.list(t)
   local i = 0
   return function()
-    i += 1
+    i = i + 1
     if i <= #t then
       return t[i]
     end
@@ -21,6 +21,18 @@ end
 function Crystal.times(amount, callback)
   for i = 0, amount - 1 do
     callback(i)
+  end
+end
+
+function Crystal.each_with_index(arr, callback)
+  for i, v in pairs(arr) do
+    callback(v, i)
+  end
+end
+
+function Crystal.each(arr, callback)
+  for v in Crystal.list(arr) do
+    callback(v)
   end
 end
 

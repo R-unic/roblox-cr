@@ -5,6 +5,7 @@ class CodeGenerator
   @out = ""
   @level = 0
   @testing = true
+  @macros = ["times", "each", "each_with_index"]
   @ast : ASTNode?
 
   def initialize(source : String, @generation_mode : GenerationMode)
@@ -402,10 +403,9 @@ class CodeGenerator
   end
 
   private def walk_fn_call(node : Call)
-    macros = ["times"]
     def_name = node.name.gsub(/puts/, "print")
     check_fn = node.args.size < 1 && def_name != "new"
-    if macros.includes?(def_name)
+    if @macros.includes?(def_name)
       append "Crystal."
       append def_name
       append "("
