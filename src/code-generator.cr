@@ -1,13 +1,12 @@
 require "compiler/crystal/syntax"; include Crystal
-require "./shared"
 
 class CodeGenerator
   getter ast : ASTNode?
   @out = ""
   @level = 0
   @macros = [
-    "times", "each", "each_with_index",
-    "to_s", "to_f64", "to_f32", "to_f", "to_i64", "to_i32", "to_i", "as"
+    "times", "each", "each_with_index", # looping methods
+    "to_s", "to_f64", "to_f32", "to_f", "to_i64", "to_i32", "to_i", "as" # casting methods
   ]
 
   def initialize(source : String, @generation_mode : GenerationMode, @testing : Bool)
@@ -15,7 +14,7 @@ class CodeGenerator
       parser = Parser.new(source)
       @ast = parser.parse
     rescue ex : Exception
-      puts "Crystal compilation error: #{ex.message}"
+      abort "Crystal failed to compile: #{ex.message}", Exit::CodeGenFailed.value
     end
   end
 
@@ -25,7 +24,7 @@ class CodeGenerator
     @out
   end
 
-  def append_dependencies
+  private def append_dependencies
     append "local Crystal = require("
     unless @testing
       case @generation_mode
@@ -367,6 +366,7 @@ class CodeGenerator
 
     newline
     append "else"; start_block
+    append "Crystal." unless @testing
     append "error(\"Attempt to assign to getter\")"; end_block
 
     newline

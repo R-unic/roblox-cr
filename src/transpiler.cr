@@ -1,6 +1,5 @@
-require "json"
 require "./code-generator"
-require "./shared"
+require "json"
 
 class RobloxCrystalConfig
   property rootDir : String
@@ -29,7 +28,11 @@ class Transpiler
 
     extracted_path = base_name.split("#{config.rootDir}/").last
     out_path = "#{parent_dir}/#{config.outDir}/#{extracted_path}.lua"
-    File.write(out_path, codegen.generate)
+    begin
+      File.write(out_path, codegen.generate)
+    rescue ex : Exception
+      abort "Code generation failed: #{ex.message}", Exit::CodeGenFailed.value
+    end
   end
 
   def self.do_directory(dir_path : String, testing : Bool = false)
@@ -56,14 +59,14 @@ class Transpiler
               testing
             )
           end
-        rescue ex
-          puts "Error transpiling: Root directory '#{config.rootDir}' does not exist."
+        rescue ex : Exception
+          abort "Error transpiling: Root directory '#{dir_path}/#{config.rootDir}' does not exist.", Exit::NoRootDir.value
         end
-      rescue ex
-        puts "Error parsing config: #{ex.message}"
+      rescue ex : Exception
+        abort "Error parsing config: #{ex.message}", Exit::InvalidConfig.value
       end
-    rescue ex
-      puts "Error loading config: #{ex.message}"
+    rescue ex : Exception
+      abort "Missing config: #{ex.message}", Exit::NoConfig.value
     end
   end
 end
