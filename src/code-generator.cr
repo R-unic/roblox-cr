@@ -2,16 +2,15 @@ require "compiler/crystal/syntax"; include Crystal
 require "./shared"
 
 class CodeGenerator
-  @ast : ASTNode?
+  getter ast : ASTNode?
   @out = ""
   @level = 0
-  @testing = true
   @macros = [
     "times", "each", "each_with_index",
     "to_s", "to_f64", "to_f32", "to_f", "to_i64", "to_i32", "to_i", "as"
   ]
 
-  def initialize(source : String, @generation_mode : GenerationMode)
+  def initialize(source : String, @generation_mode : GenerationMode, @testing : Bool)
     begin
       parser = Parser.new(source)
       @ast = parser.parse
