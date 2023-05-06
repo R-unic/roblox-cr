@@ -1,22 +1,17 @@
+![build](https://github.com/Paragon-Studios/roblox-cr/actions/workflows/crystal.yml/badge.svg)
 # roblox-cr
 
-TODO: Write a description here
+roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of crystal code and converts it into lua.
 
 ## Installation
 
-TODO: Write installation instructions here
-
-## Usage
-
-TODO: Write usage instructions here
-
-## Development
-
-TODO: Write development instructions here
+1. Clone the repo
+2. Run `make install`
+3. Check if everything is working by running `rbxcr -h`
 
 ## Contributing
 
-1. Fork it (<https://github.com/your-github-user/roblox-cr/fork>)
+1. [Fork it](https://github.com/Paragon-Studios/roblox-cr/fork)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
@@ -24,4 +19,4 @@ TODO: Write development instructions here
 
 ## Contributors
 
-- [R-unic](https://github.com/your-github-user) - creator and maintainer
+- [R-unic](https://github.com/R-unic) - creator and maintainer
