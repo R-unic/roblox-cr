@@ -1,16 +1,18 @@
 # Example 1: Simple class with a method
-# class Dog
-#   def bark
-#     puts "Woof!"
-#   end
-# end
+class Dog
+  def bark
+    puts "Woof!"
+  end
+end
+
+Dog.new.bark
 
 # # Example 2: Class with a constructor
 # class Car
-#   def initialize(make, model)
-#     @make = make
-#     @model = model
-#   end
+#   def initialize(
+#     @make : String,
+#     @model: String
+#   ) end
 
 #   def display
 #     puts "The car is a #{@make} #{@model}"
@@ -30,6 +32,5 @@
 #   end
 # end
 
-# Dog.new.bark
 
-hello = {"h", "e", "l", "l", "o"}
+# Car.new("Ford", "Fusion").display

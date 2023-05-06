@@ -17,7 +17,10 @@ class CodeGenerator
     @out
   end
 
-  private def walk(node : ASTNode | Float64 | String)
+  private def walk(node : ASTNode | Float64 | String,
+    class_member : Bool? = nil,
+    class_node : ClassDef? = nil
+  )
     case node
     when Nop
     when TypeDeclaration
@@ -146,7 +149,12 @@ class CodeGenerator
     when Arg
       append node.name
     when Def
-      append "local function "
+      append "local " if class_member.nil?
+      append "function "
+      if class_member
+        walk class_node.not_nil!.name
+        append ":"
+      end
       append node.name
 
       append "("
@@ -157,6 +165,7 @@ class CodeGenerator
       walk node.body
 
       end_block
+      newline
       append "end"
       newline
     when Call
@@ -170,50 +179,109 @@ class CodeGenerator
       elsif is_postfix?(node.name)
         walk_postfix node
       else
-        check_fn = node.args.size < 1 && node.name != "new"
-        call_op = node.name == "new" ? "." : ":"
-        if check_fn
-          append "local _ = " if @out.chars.last == '\n'
-          append "(type#{!@testing ? "of" : ""}("
-          walk node.obj.not_nil! unless node.obj.nil?
-          append "."
-        else
-          walk node.obj.not_nil! unless node.obj.nil?
-          append call_op unless node.obj.nil?
-        end
-
-        def_name = node.name.gsub(/puts/, "print")
-        append def_name
-        if check_fn
-          append ") == \"function\" and "
-          walk node.obj.not_nil! unless node.obj.nil?
-          append call_op
-          append def_name
-        end
-
-        append "("
-        walk_node_list node.args
-        unless node.block.nil?
-          append ", " unless check_fn
-          walk node.block.not_nil!
-        end
-        append ")"
-
-        if check_fn
-          append " or "
-          walk node.obj.not_nil! unless node.obj.nil?
-          append "."
-          append def_name
-          append ")"
-        # else
-        #   newline
-        end
+        walk_fn_call node
       end
     when ClassDef
       walk_class_def node
     else
       puts node.class
     end
+  end
+
+  private def walk_class_def(_class : ClassDef)
+    append "--classdef" # comment for readability and such
+    newline
+    walk _class.name
+    append " = {} do"
+    start_block
+
+    append "function "; walk _class.name; append ".new("
+    append ")"
+    start_block
+
+    walk_class_ctor _class
+
+    newline
+    append "end"
+    newline
+
+    newline
+    walk _class.body, class_member: true, class_node: _class
+    end_block
+
+    newline
+    append "end"; newline
+  end
+
+  private def walk_class_ctor(_class : ClassDef)
+    append "local include = {}"; newline
+    append "local meta = setmetatable("; walk _class.name; append ", { __index = {} })"; newline
+    append "meta.__class = \""; walk _class.name; append "\""; newline
+
+    append "for "
+    append "_, " if @testing
+    append "mixin in "
+    append @testing ? "pairs" : "Crystal.list"
+    append "(include) do"
+    start_block
+    append "for k, v in pairs(mixin) do"
+    start_block
+    append "meta[k] = v"
+    end_block
+    newline
+    append "end"
+
+    end_block
+    newline
+    append "end"
+
+    newline
+    append "local self = setmetatable({}, { __index = meta })"; newline
+    append "self.accessors = setmetatable({}, { __index = meta.accessors or {} })"; newline
+    append "self.getters = setmetatable({}, { __index = meta.getters or {} })"; newline
+    append "self.setters = setmetatable({}, { __index = meta.setters or {} })"; newline
+    append "self.writable = {}"; newline
+    append "self.private = {}"; newline
+
+    newline
+    append "return setmetatable(self, {"; start_block
+
+    append "__index = function(t, k)"; start_block
+    append "if not self.getters[k] and not self.accessors[k] and self.private[k] then"; start_block
+    append "return nil"
+
+    end_block
+    newline
+    append "end"; newline
+    append "return self.getters[k] or self.accessors[k] or "
+    walk _class.name; append "[k]"
+    end_block
+    newline
+    append "end,"; newline
+
+    append "__newindex = function(t, k, v)"; start_block
+    append "if t.writable[k] or self.writable[k] or meta.writable[k] then"; start_block
+    append "if self.setters[k] then"; start_block
+    append "self.setters[k] = v"; end_block; newline
+    append "elseif self.accessors[k] then"; start_block
+    append "self.accessors[k] = v"; end_block;
+
+    newline
+    append "end"; end_block
+
+    newline
+    append "else"; start_block
+    append "error(\"Attempt to assign to getter\")"; end_block
+
+    newline
+    append "end"; end_block
+
+
+    newline
+    append "end"; end_block
+
+    newline
+    append "})"; end_block
   end
 
   private def walk_named_tuple(node : Generic)
@@ -258,78 +326,43 @@ class CodeGenerator
     newline
   end
 
-  private def walk_class_def(node : ClassDef)
-    append "--classdef" # comment for readability and such
-      newline
-      walk node.name
-      append " = {} do"
-      start_block
+  private def walk_fn_call(node : Call)
+    check_fn = node.args.size < 1 && node.name != "new"
+    call_op = node.name == "new" ? "." : ":"
+    if check_fn
+      append "local _ = " if @out.chars.last == '\n'
+      append "(type#{!@testing ? "of" : ""}("
+      walk node.obj.not_nil! unless node.obj.nil?
+      append "."
+    else
+      walk node.obj.not_nil! unless node.obj.nil?
+      append call_op unless node.obj.nil?
+    end
 
-      append "local include = {}"; newline
-      append "local idxMeta = setmetatable(Dog, { __index = {} })"; newline
-      append "idxMeta.__type = \""; walk node.name; append "\""; newline
+    def_name = node.name.gsub(/puts/, "print")
+    append def_name
+    if check_fn
+      append ") == \"function\" and "
+      walk node.obj.not_nil! unless node.obj.nil?
+      append call_op
+      append def_name
+    end
 
-      append "for mixin in ruby.list(include) do"
-      start_block
-      append "for k, v in pairs(mixin) do"
-      start_block
-      append "idxMeta[k] = v"
-      end_block
-      newline
-      append "end"
+    append "("
+    walk_node_list node.args
+    unless node.block.nil?
+      append ", " unless check_fn
+      walk node.block.not_nil!
+    end
+    append ")"
 
-      end_block
-      newline
-      append "end"
-
-      newline
-      append "local self = setmetatable({}, { __index = idxMeta })"; newline
-      append "self.accessors = setmetatable({}, { __index = idxMeta.accessors or {} })"; newline
-      append "self.getters = setmetatable({}, { __index = idxMeta.getters or {} })"; newline
-      append "self.setters = setmetatable({}, { __index = idxMeta.setters or {} })"; newline
-      append "self.writable = {}"; newline
-      append "self.private = {}"; newline
-      append "setmetatable(self, {"; start_block
-
-      append "__index = function(t, k)"; start_block
-      append "if not self.attr_reader[k] and not self.attr_accessor[k] and self.private[k] then"; start_block
-      append "return nil"
-
-      end_block
-      newline
-      append "end"; newline
-      append "return self.attr_reader[k] or self.attr_accessor[k] or "
-      walk node.name; append "[k]"
-      end_block
-      newline
-      append "end"; newline
-
-      append "__newindex = function(t, k, v)"; start_block
-      append "if t.writable[k] or self.writable[k] or idxMeta.writable[k] then"; start_block
-      append "if self.attr_writer[k] then"; start_block
-      append "self.attr_writer[k] = v"; end_block; newline
-      append "elseif self.attr_accessor[k] then"; start_block
-      append "self.attr_accessor[k] = v"; end_block;
-
-      newline
-      append "end"; end_block
-
-      newline
-      append "else"; start_block
-      append "error()"; end_block
-
-      newline
-      append "end"; end_block
-
-
-      newline
-      append "end"; end_block
-
-      newline
-      append "})"; end_block
-
-      newline
-      append "end"; newline
+    if check_fn
+      append " or "
+      walk node.obj.not_nil! unless node.obj.nil?
+      append "."
+      append def_name
+      append ")"
+    end
   end
 
   private def walk_bin_op(node : Call)
