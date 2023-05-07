@@ -1,7 +1,7 @@
 ![build](https://github.com/Paragon-Studios/roblox-cr/actions/workflows/crystal.yml/badge.svg)
 # roblox-cr
 
-roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of crystal code and converts it into lua.
+roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of Crystal code and converts it into Lua.
 
 ## Installation
 
