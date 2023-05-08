@@ -7,6 +7,7 @@ class CodeGenerator
   @current_class_members = [] of Array(ASTNode)
   @current_class_instance_vars = [] of InstanceVar
   @current_class_instance_var_values = [] of ASTNode
+  @class_names = [] of String
   @macros = [
     "times", "each", "each_with_index", # looping methods
     "to_s", "to_f64", "to_f32", "to_f", "to_i64", "to_i32", "to_i", "as" # casting methods
@@ -194,9 +195,13 @@ class CodeGenerator
         append "function "
         if class_member
           walk class_node.not_nil!.name
-          append ":"
+          accessor = ":"
+          unless node.receiver.nil?
+            accessor = "." if node.receiver.as(Var).name == "self"
+          end
+          append accessor
         end
-        unless node.receiver.nil?
+        unless node.receiver.nil? || node.receiver.as(Var).name == "self"
           walk node.receiver.not_nil!
           append "."
         end
@@ -291,6 +296,7 @@ class CodeGenerator
     append " = {} do"
     start_block
 
+    @class_names << _class.name.names.join "::"
     walk _class.body, class_member: true, class_node: _class, save_value: true unless _class.body.is_a?(Call)
     walk_class_ctor _class
 
@@ -491,6 +497,10 @@ class CodeGenerator
       append ")"
     else
       call_op = def_name == "new" ? "." : ":"
+      unless node.obj.nil? || def_name == "new"
+        call_op = "." if @class_names.includes?(node.obj.as(Crystal::Path).names.join "::")
+      end
+
       if check_fn
         append "local _ = " if @out.chars.last == '\n'
         append "(type#{!@testing ? "of" : ""}("
