@@ -57,7 +57,7 @@ class CodeGenerator
     case node
     when Nop
     when TypeDeclaration
-      walk node.var
+      walk node.var, class_member, class_node, save_value
       unless node.value.nil?
         if save_value
           @current_class_instance_var_values << node.value.not_nil!
@@ -67,7 +67,7 @@ class CodeGenerator
         end
       end
     when Expressions
-      node.expressions.each { |expr| walk expr, class_member, class_node, save_value }
+      node.expressions.each { |expr| puts expr.class; walk expr, class_member, class_node, save_value }
     when Require # yeah im gonna have to make a custom require function
       append "require("
       walk node.string
@@ -177,8 +177,7 @@ class CodeGenerator
       walk_node_list node.values
       newline
     when Assign
-      append "local "
-      target = walk node.target
+      target = walk node.target, class_member, class_node, save_value
       append " = "
       value = walk node.value
       newline
@@ -218,7 +217,7 @@ class CodeGenerator
         append ")"
         start_block
 
-        walk node.body
+        walk node.body, class_member, class_node
 
         end_block
         newline
@@ -254,10 +253,14 @@ class CodeGenerator
     when ClassDef
       walk_class_def node
     when InstanceVar
-      @current_class_instance_vars << node
+      if save_value
+        @current_class_instance_vars << node
+      else
+        append node.name.gsub(/@/, "self.")
+      end
     when ClassVar
       append "#{class_node.not_nil!.name}."
-      append node.name.gsub(/@/, "")
+      append node.name.gsub(/@@/, "")
     when If
       append "if "
       walk node.cond
@@ -277,7 +280,7 @@ class CodeGenerator
       newline
       append "end"
     else
-      puts node.class
+      raise "Unhandled node: #{node.to_s}"
     end
   end
 
@@ -358,15 +361,13 @@ class CodeGenerator
     end
     @current_class_instance_vars.each_with_index do |instance_var, i|
       value = @current_class_instance_var_values[i]?
+      next if value.nil?
 
       append "self.private."
       append instance_var.name.gsub(/@/, "")
       append " = "
-      if value.nil?
-        append "nil"
-      else
-        walk value, class_member: true, class_node: _class
-      end
+      walk value, class_member: true, class_node: _class
+      newline
     end
     @current_class_instance_vars = [] of InstanceVar
     @current_class_instance_var_values = [] of ASTNode
