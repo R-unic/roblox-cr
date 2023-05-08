@@ -56,18 +56,8 @@ class CodeGenerator
   )
     case node
     when Nop
-    when TypeDeclaration
-      walk node.var, class_member, class_node, save_value
-      unless node.value.nil?
-        if save_value
-          @current_class_instance_var_values << node.value.not_nil!
-        else
-          append " = "
-          walk node.value.not_nil!, class_member, class_node
-        end
-      end
     when Expressions
-      node.expressions.each { |expr| puts expr.class; walk expr, class_member, class_node, save_value }
+      node.expressions.each { |expr| walk expr, class_member, class_node, save_value }
     when Require # yeah im gonna have to make a custom require function
       append "require("
       walk node.string
@@ -259,8 +249,18 @@ class CodeGenerator
         append node.name.gsub(/@/, "self.")
       end
     when ClassVar
-      append "#{class_node.not_nil!.name}."
-      append node.name.gsub(/@@/, "")
+      append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
+    when TypeDeclaration
+      walk node.var, class_member, class_node, save_value
+      unless node.value.nil?
+        if save_value && node.var.class != ClassVar
+          @current_class_instance_var_values << node.value.not_nil!
+        else
+          append " = "
+          walk node.value.not_nil!, class_member, class_node
+          newline if node.var.class == ClassVar
+        end
+      end
     when If
       append "if "
       walk node.cond
