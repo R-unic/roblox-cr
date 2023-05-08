@@ -4,6 +4,10 @@ class CodeGenerator
   getter ast : ASTNode?
   @out = ""
   @level = 0
+  @current_class_members = [] of Array(ASTNode)
+  @current_class_instance_vars = [] of InstanceVar
+  @current_class_instance_var_values = [] of ASTNode
+  @class_names = [] of String
   @macros = [
     "times", "each", "each_with_index", # looping methods
     "to_s", "to_f64", "to_f32", "to_f", "to_i64", "to_i32", "to_i", "as" # casting methods
@@ -47,15 +51,14 @@ class CodeGenerator
   end
 
   private def walk(node : ASTNode | Float64 | String,
-    class_member : Bool? = nil,
-    class_node : ClassDef? = nil
+    class_member : Bool = false,
+    class_node : ClassDef? = nil,
+    save_value : Bool = false
   )
     case node
     when Nop
-    when TypeDeclaration
-      walk node.var
     when Expressions
-      node.expressions.each { |expr| walk expr, class_member, class_node }
+      node.expressions.each { |expr| walk expr, class_member, class_node, save_value }
     when Require # yeah im gonna have to make a custom require function
       append "require("
       walk node.string
@@ -165,8 +168,7 @@ class CodeGenerator
       walk_node_list node.values
       newline
     when Assign
-      append "local "
-      target = walk node.target
+      target = walk node.target, class_member, class_node, save_value
       append " = "
       value = walk node.value
       newline
@@ -193,10 +195,13 @@ class CodeGenerator
         append "function "
         if class_member
           walk class_node.not_nil!.name
-          puts node.body
-          append ":"
+          accessor = ":"
+          unless node.receiver.nil?
+            accessor = "." if node.receiver.as(Var).name == "self"
+          end
+          append accessor
         end
-        unless node.receiver.nil?
+        unless node.receiver.nil? || node.receiver.as(Var).name == "self"
           walk node.receiver.not_nil!
           append "."
         end
@@ -207,7 +212,7 @@ class CodeGenerator
         append ")"
         start_block
 
-        walk node.body
+        walk node.body, class_member, class_node
 
         end_block
         newline
@@ -236,30 +241,31 @@ class CodeGenerator
       elsif is_postfix?(node.name)
         walk_postfix node
       elsif node.name == "getter" || node.name == "setter" || node.name == "property"
-        append node.name
-        append "(self, "
-        walk node.args.first.to_s.split(" : ").first
-        append ")"
-        newline
+        @current_class_members << [node.args.first, node]
       else
         walk_fn_call node
       end
     when ClassDef
       walk_class_def node
     when InstanceVar
-      chop 6 # remove the "local" from the previous Assign node
-      append "self."
-      puts node.visibility
-      case node.visibility
-      when Visibility::Public
-
+      if save_value
+        @current_class_instance_vars << node
       else
-        append "private."
+        append node.name.gsub(/@/, "self.")
       end
-      append node.name.gsub(/@/, "")
     when ClassVar
-      append "#{class_node.not_nil!.name}."
-      append node.name.gsub(/@/, "")
+      append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
+    when TypeDeclaration
+      walk node.var, class_member, class_node, save_value
+      unless node.value.nil?
+        if save_value && node.var.class != ClassVar
+          @current_class_instance_var_values << node.value.not_nil!
+        else
+          append " = "
+          walk node.value.not_nil!, class_member, class_node
+          newline if node.var.class == ClassVar
+        end
+      end
     when If
       append "if "
       walk node.cond
@@ -279,7 +285,7 @@ class CodeGenerator
       newline
       append "end"
     else
-      puts node.class
+      raise "Unhandled node: #{node.to_s}"
     end
   end
 
@@ -290,7 +296,8 @@ class CodeGenerator
     append " = {} do"
     start_block
 
-    walk _class.body, class_member: true, class_node: _class unless _class.body.is_a?(Call)
+    @class_names << _class.name.names.join "::"
+    walk _class.body, class_member: true, class_node: _class, save_value: true unless _class.body.is_a?(Call)
     walk_class_ctor _class
 
     newline
@@ -330,9 +337,49 @@ class CodeGenerator
     append "self.setters = setmetatable({}, { __index = meta.setters or {} })"; newline
     append "self.writable = {}"; newline
     append "self.private = {}"; newline
+    newline
+
+    @current_class_members.each do |member|
+      decl_node, call_node = member
+      case decl_node
+      when TypeDeclaration
+        append "self."
+        macro_name = call_node.as(Call).name
+        case macro_name
+        when "property"
+          append "accessors"
+        when "setter"
+          append macro_name
+          append "s."
+          walk decl_node, class_member: true, class_node: _class
+          newline
+          append "self.writable"
+        else
+          append macro_name
+          append "s"
+        end
+        append "."
+        walk decl_node, class_member: true, class_node: _class
+        newline
+      else
+        raise "Unhandled class member node: #{decl_node.class}"
+      end
+    end
+    @current_class_instance_vars.each_with_index do |instance_var, i|
+      value = @current_class_instance_var_values[i]?
+      next if value.nil?
+
+      append "self.private."
+      append instance_var.name.gsub(/@/, "")
+      append " = "
+      walk value, class_member: true, class_node: _class
+      newline
+    end
+    @current_class_instance_vars = [] of InstanceVar
+    @current_class_instance_var_values = [] of ASTNode
+    @current_class_members = [] of Array(ASTNode)
 
     # Find a Def node with the name "initialize"
-    newline
     initializer_def = _class.body.is_a?(Expressions) ?
       _class.body.as(Expressions).expressions.find { |expr| expr.is_a?(Def) && expr.as(Def).name == "initialize" }
       : (_class.body.is_a?(Def) && _class.body.as(Def).name == "initialize" ? _class.body.as(Def) : nil)
@@ -450,6 +497,10 @@ class CodeGenerator
       append ")"
     else
       call_op = def_name == "new" ? "." : ":"
+      unless node.obj.nil? || def_name == "new"
+        call_op = "." if @class_names.includes?(node.obj.as(Crystal::Path).names.join "::")
+      end
+
       if check_fn
         append "local _ = " if @out.chars.last == '\n'
         append "(type#{!@testing ? "of" : ""}("
