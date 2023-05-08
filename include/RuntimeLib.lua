@@ -2,10 +2,6 @@ require "String"
 
 local Crystal = {}
 
-function Crystal.mixin(class, includes)
-  print(getmetatable(class))
-end
-
 function Crystal.list(t)
   local i = 0
   return function()

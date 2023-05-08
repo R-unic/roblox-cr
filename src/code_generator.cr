@@ -7,6 +7,7 @@ class CodeGenerator
   @current_class_members = [] of Array(ASTNode)
   @current_class_instance_vars = [] of InstanceVar
   @current_class_instance_var_values = [] of ASTNode
+  @current_class_includes = [] of String
   @class_names = [] of String
   @macros = [
     "times", "each", "each_with_index", # looping methods
@@ -60,21 +61,11 @@ class CodeGenerator
     when Expressions
       node.expressions.each { |expr| walk expr, class_member, class_node, save_value }
     when Include
-      if class_node.is_a?(ClassDef)
-        walk class_node.not_nil!.name
-      else
-        walk class_node.not_nil!.name
+      name = walk node.name
+      unless name.nil? || !name.is_a?(String)
+        @current_class_includes << name.not_nil!.to_s
+        chop name.size
       end
-      append " = Crystal.mixin("
-      if class_node.is_a?(ClassDef)
-        walk class_node.not_nil!.name
-      else
-        walk class_node.not_nil!.name
-      end
-      append ", "
-      walk node.name
-      append ")"
-      newline
     when Require # yeah im gonna have to make a custom require function
       append "require("
       walk node.string
@@ -336,7 +327,7 @@ class CodeGenerator
     append ")"
     start_block
 
-    append "local include = {}"; newline
+    append "local include = {#{@current_class_includes.join ", "}}"; newline
     append "local meta = setmetatable("; walk _class.name;
     append ", { __index = "
     unless !_class.is_a?(ClassDef) || _class.as(ClassDef).superclass.nil?
@@ -418,6 +409,7 @@ class CodeGenerator
     @current_class_instance_vars = [] of InstanceVar
     @current_class_instance_var_values = [] of ASTNode
     @current_class_members = [] of Array(ASTNode)
+    @current_class_includes = [] of String
 
     # Find a Def node with the name "initialize"
     if _class.is_a?(ClassDef)
@@ -688,8 +680,8 @@ class CodeGenerator
   end
 
   # Chop the last `idx` characters off out the output
-  private def chop(idx : UInt32)
-    @out = @out[0..(-(idx.to_i + 1))]
+  private def chop(idx : Int32)
+    @out = @out[0..(-(idx + 1))]
   end
 
   # Add a newline character plus the current tab level
