@@ -59,6 +59,22 @@ class CodeGenerator
     when Nop
     when Expressions
       node.expressions.each { |expr| walk expr, class_member, class_node, save_value }
+    when Include
+      if class_node.is_a?(ClassDef)
+        walk class_node.not_nil!.name
+      else
+        walk class_node.not_nil!.name
+      end
+      append " = Crystal.mixin("
+      if class_node.is_a?(ClassDef)
+        walk class_node.not_nil!.name
+      else
+        walk class_node.not_nil!.name
+      end
+      append ", "
+      walk node.name
+      append ")"
+      newline
     when Require # yeah im gonna have to make a custom require function
       append "require("
       walk node.string
@@ -194,6 +210,7 @@ class CodeGenerator
         append "local " if !class_member
         append "function "
         if class_member
+          @current_class_members << [node.as ASTNode, node.as ASTNode]
           if class_node.is_a?(ClassDef)
             walk class_node.not_nil!.name
           else
@@ -205,6 +222,7 @@ class CodeGenerator
           end
           append accessor
         end
+
         unless node.receiver.nil? || node.receiver.as(Var).name == "self"
           walk node.receiver.not_nil!, class_member, class_node
           append "."
@@ -245,7 +263,7 @@ class CodeGenerator
       elsif is_postfix?(node.name)
         walk_postfix node
       elsif node.name == "getter" || node.name == "setter" || node.name == "property"
-        @current_class_members << [node.args.first, node]
+        @current_class_members << [node.args.first, node].as Array(ASTNode)
       else
         walk_fn_call node, class_member, class_node
       end
@@ -361,11 +379,12 @@ class CodeGenerator
     newline
 
     @current_class_members.each do |member|
-      decl_node, call_node = member
+      decl_node, parent_node = member
       case decl_node
+      when Def
       when TypeDeclaration
         append "self."
-        macro_name = call_node.as(Call).name
+        macro_name = parent_node.as(Call).name
         case macro_name
         when "property"
           append "accessors"
@@ -551,11 +570,20 @@ class CodeGenerator
         append "local _ = " if @out.chars.last == '\n' || @out.chars.last == '\t'
         append "(type#{!@testing ? "of" : ""}("
         append "self" if node.name == "super"
-        walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
+
+        unless node.obj.nil?
+          walk node.obj.not_nil!, class_member, class_node
+        else
+          append "self" unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+        end
         append "."
         append "__" if node.name == "super"
       else
-        walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
+        unless node.obj.nil?
+          walk node.obj.not_nil!, class_member, class_node
+        else
+          append "self" if @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+        end
         append call_op unless node.obj.nil?
       end
 
@@ -563,7 +591,11 @@ class CodeGenerator
       if check_fn
         append ") == \"function\" and "
         append "self" if node.name == "super"
-        walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
+        unless node.obj.nil?
+          walk node.obj.not_nil!, class_member, class_node
+        else
+          append "self" unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+        end
         append call_op
         append "__" if node.name == "super"
         append def_name
@@ -575,7 +607,11 @@ class CodeGenerator
       if check_fn
         append " or "
         append "self" if node.name == "super"
-        walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
+        unless node.obj.nil?
+          walk node.obj.not_nil!, class_member, class_node
+        else
+          append "self" unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+        end
         append "."
         append "__" if node.name == "super"
         append def_name

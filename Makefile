@@ -6,9 +6,12 @@ endif
 
 BUILD_CMD = crystal build src/main.cr -o bin/rbxcr -D i_know_what_im_doing
 install:
-	$(BUILD_CMD) --release
+	$(BUILD_CMD) --error-trace --release
 	cp bin/rbxcr $(INSTALL_DIR)/rbxcr
 	chmod +x $(INSTALL_DIR)/rbxcr
 
 build:
 	$(BUILD_CMD)
+
+trace:
+	$(BUILD_CMD) --error-trace
