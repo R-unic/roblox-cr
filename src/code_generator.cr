@@ -52,7 +52,7 @@ class CodeGenerator
 
   private def walk(node : ASTNode | Float64 | String,
     class_member : Bool = false,
-    class_node : ClassDef? = nil,
+    class_node : (ClassDef | ModuleDef)? = nil,
     save_value : Bool = false
   )
     case node
@@ -194,7 +194,11 @@ class CodeGenerator
         append "local " if !class_member
         append "function "
         if class_member
-          walk class_node.not_nil!.name
+          if class_node.is_a?(ClassDef)
+            walk class_node.not_nil!.name
+          else
+            walk class_node.not_nil!.name
+          end
           accessor = ":"
           unless node.receiver.nil?
             accessor = "." if node.receiver.as(Var).name == "self"
@@ -245,7 +249,7 @@ class CodeGenerator
       else
         walk_fn_call node, class_member, class_node
       end
-    when ClassDef
+    when ClassDef, ModuleDef
       walk_class_def node
     when InstanceVar
       if save_value
@@ -254,7 +258,11 @@ class CodeGenerator
         append node.name.gsub(/@/, "self.")
       end
     when ClassVar
-      append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
+      if class_node.is_a?(ClassDef)
+        append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
+      else
+        append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
+      end
     when TypeDeclaration
       walk node.var, class_member, class_node, save_value
       unless node.value.nil?
@@ -263,7 +271,7 @@ class CodeGenerator
         else
           append " = "
           walk node.value.not_nil!, class_member, class_node
-          newline if node.var.class == ClassVar
+          newline if node.var.is_a?(ClassVar)
         end
       end
     when If
@@ -289,18 +297,12 @@ class CodeGenerator
     end
   end
 
-  private def walk_class_def(_class : ClassDef)
-    puts _class.superclass
-    append "--classdef" # comment for readability and such
+  private def walk_class_def(_class : ClassDef | ModuleDef)
+    append "--"
+    append _class.is_a?(ClassDef) ? "classdef" : "moduledef"  # comment for readability and such
     newline
     walk _class.name
-    append " = {}"
-    # unless _class.superclass.nil?
-    #   walk _class.superclass.not_nil!
-    # else
-    #   append "{}"
-    # end
-    append " do"
+    append " = {} do"
     start_block
 
     @class_names << _class.name.names.join "::"
@@ -311,7 +313,7 @@ class CodeGenerator
     append "end"; newline
   end
 
-  private def walk_class_ctor(_class : ClassDef)
+  private def walk_class_ctor(_class : ClassDef | ModuleDef)
     append "function "; walk _class.name; append ".new("
     append ")"
     start_block
@@ -319,8 +321,8 @@ class CodeGenerator
     append "local include = {}"; newline
     append "local meta = setmetatable("; walk _class.name;
     append ", { __index = "
-    unless _class.superclass.nil?
-      walk _class.superclass.not_nil!
+    unless !_class.is_a?(ClassDef) || _class.as(ClassDef).superclass.nil?
+      walk _class.as(ClassDef).superclass.not_nil!
     else
       append "{}"
     end
@@ -346,9 +348,9 @@ class CodeGenerator
 
     newline
     append "local self = setmetatable({}, { __index = meta })"; newline
-    unless _class.superclass.nil?
+    unless !_class.is_a?(ClassDef) || _class.as(ClassDef).superclass.nil?
       append "self.__super = "
-      walk _class.superclass.not_nil!
+      walk _class.as(ClassDef).superclass.not_nil!
       newline
     end
     append "self.accessors = setmetatable({}, { __index = meta.accessors or {} })"; newline
@@ -399,13 +401,10 @@ class CodeGenerator
     @current_class_members = [] of Array(ASTNode)
 
     # Find a Def node with the name "initialize"
-    initializer_def = _class.body.is_a?(Expressions) ?
-      _class.body.as(Expressions).expressions.find { |expr| expr.is_a?(Def) && expr.as(Def).name == "initialize" }
-      : (_class.body.is_a?(Def) && _class.body.as(Def).name == "initialize" ? _class.body.as(Def) : nil)
-
-    unless initializer_def.nil?
-      walk _class.body unless _class.body.as(Expressions).expressions.pop.is_a?(Def)
-      walk initializer_def.as(Def).body
+    if _class.is_a?(ClassDef)
+      walk_ctor_body _class.as(ClassDef)
+    else
+      walk_ctor_body _class.as(ModuleDef)
     end
 
     newline
@@ -419,7 +418,12 @@ class CodeGenerator
     newline
     append "end"; newline
     append "return self.getters[k] or self.accessors[k] or "
-    walk _class.name; append "[k]"
+    if _class.is_a?(ClassDef)
+      walk _class.as(ClassDef).name
+    else
+      walk _class.as(ModuleDef).name
+    end
+    append "[k]"
     end_block
     newline
     append "end,"; newline
@@ -451,6 +455,17 @@ class CodeGenerator
     newline
     append "end"
     end_block
+  end
+
+  private def walk_ctor_body(_class : T) forall T
+    initializer_def = _class.as(T).body.is_a?(Expressions) ?
+      _class.as(T).body.as(Expressions).expressions.find { |expr| expr.is_a?(Def) && expr.as(Def).name == "initialize" }
+      : (_class.as(T).body.is_a?(Def) && _class.as(T).body.as(Def).name == "initialize" ? _class.as(T).body.as(Def) : nil)
+
+    unless initializer_def.nil?
+      walk _class.as(T).body unless _class.as(T).body.as(Expressions).expressions.pop.is_a?(Def)
+      walk initializer_def.as(Def).body
+    end
   end
 
   private def walk_named_tuple(node : Generic)
@@ -503,7 +518,7 @@ class CodeGenerator
     end
   end
 
-  private def walk_fn_call(node : Call, class_member : Bool, class_node : ClassDef?)
+  private def walk_fn_call(node : Call, class_member : Bool, class_node : (ClassDef | ModuleDef)?)
     def_name = node.name.gsub(/puts/, "print")
     newline if def_name == "print"
     check_fn = node.args.size < 1 && def_name != "new"
