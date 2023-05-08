@@ -290,10 +290,17 @@ class CodeGenerator
   end
 
   private def walk_class_def(_class : ClassDef)
+    puts _class.superclass
     append "--classdef" # comment for readability and such
     newline
     walk _class.name
-    append " = {} do"
+    append " = {}"
+    # unless _class.superclass.nil?
+    #   walk _class.superclass.not_nil!
+    # else
+    #   append "{}"
+    # end
+    append " do"
     start_block
 
     @class_names << _class.name.names.join "::"
@@ -310,7 +317,14 @@ class CodeGenerator
     start_block
 
     append "local include = {}"; newline
-    append "local meta = setmetatable("; walk _class.name; append ", { __index = {} })"; newline
+    append "local meta = setmetatable("; walk _class.name;
+    append ", { __index = "
+    unless _class.superclass.nil?
+      walk _class.superclass.not_nil!
+    else
+      append "{}"
+    end
+    append " })"; newline
     append "meta.__class = \""; walk _class.name; append "\""; newline
 
     append "for "
@@ -332,6 +346,11 @@ class CodeGenerator
 
     newline
     append "local self = setmetatable({}, { __index = meta })"; newline
+    unless _class.superclass.nil?
+      append "self.__super = "
+      walk _class.superclass.not_nil!
+      newline
+    end
     append "self.accessors = setmetatable({}, { __index = meta.accessors or {} })"; newline
     append "self.getters = setmetatable({}, { __index = meta.getters or {} })"; newline
     append "self.setters = setmetatable({}, { __index = meta.setters or {} })"; newline
@@ -486,6 +505,7 @@ class CodeGenerator
 
   private def walk_fn_call(node : Call, class_member : Bool, class_node : ClassDef?)
     def_name = node.name.gsub(/puts/, "print")
+    newline if def_name == "print"
     check_fn = node.args.size < 1 && def_name != "new"
     if @macros.includes?(def_name)
       append "Crystal."
@@ -513,7 +533,7 @@ class CodeGenerator
       end
 
       if check_fn
-        append "local _ = " if @out.chars.last == '\n'
+        append "local _ = " if @out.chars.last == '\n' || @out.chars.last == '\t'
         append "(type#{!@testing ? "of" : ""}("
         append "self" if node.name == "super"
         walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
