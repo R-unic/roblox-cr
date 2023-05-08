@@ -191,7 +191,7 @@ class CodeGenerator
       append node.name
     when Def
       if class_member ? node.name != "initialize" : true
-        append "local " if class_member.nil?
+        append "local " if !class_member
         append "function "
         if class_member
           walk class_node.not_nil!.name
@@ -202,7 +202,7 @@ class CodeGenerator
           append accessor
         end
         unless node.receiver.nil? || node.receiver.as(Var).name == "self"
-          walk node.receiver.not_nil!
+          walk node.receiver.not_nil!, class_member, class_node
           append "."
         end
         append node.name
@@ -243,7 +243,7 @@ class CodeGenerator
       elsif node.name == "getter" || node.name == "setter" || node.name == "property"
         @current_class_members << [node.args.first, node]
       else
-        walk_fn_call node
+        walk_fn_call node, class_member, class_node
       end
     when ClassDef
       walk_class_def node
@@ -285,7 +285,7 @@ class CodeGenerator
       newline
       append "end"
     else
-      raise "Unhandled node: #{node.to_s}"
+      raise "Unhandled node: #{node.class}"
     end
   end
 
@@ -484,7 +484,7 @@ class CodeGenerator
     end
   end
 
-  private def walk_fn_call(node : Call)
+  private def walk_fn_call(node : Call, class_member : Bool, class_node : ClassDef?)
     def_name = node.name.gsub(/puts/, "print")
     check_fn = node.args.size < 1 && def_name != "new"
     if @macros.includes?(def_name)
@@ -498,24 +498,39 @@ class CodeGenerator
     else
       call_op = def_name == "new" ? "." : ":"
       unless node.obj.nil? || def_name == "new"
-        call_op = "." if @class_names.includes?(node.obj.as(Crystal::Path).names.join "::")
+        obj_name = ""
+        case node.obj
+        when Crystal::Path
+          obj_name = node.obj.as(Crystal::Path).names.join "::"
+        when Call
+          obj_name = node.obj.as(Call).name
+        when Var
+          obj_name = node.obj.as(Var).name
+        else
+          raise "Unhandled object node for call: #{node.obj.class}"
+        end
+        call_op = "." if @class_names.includes?(obj_name)
       end
 
       if check_fn
         append "local _ = " if @out.chars.last == '\n'
         append "(type#{!@testing ? "of" : ""}("
-        walk node.obj.not_nil! unless node.obj.nil?
+        append "self" if node.name == "super"
+        walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
         append "."
+        append "__" if node.name == "super"
       else
-        walk node.obj.not_nil! unless node.obj.nil?
+        walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
         append call_op unless node.obj.nil?
       end
 
       append def_name
       if check_fn
         append ") == \"function\" and "
-        walk node.obj.not_nil! unless node.obj.nil?
+        append "self" if node.name == "super"
+        walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
         append call_op
+        append "__" if node.name == "super"
         append def_name
       end
 
@@ -524,8 +539,10 @@ class CodeGenerator
       append ")"
       if check_fn
         append " or "
-        walk node.obj.not_nil! unless node.obj.nil?
+        append "self" if node.name == "super"
+        walk node.obj.not_nil!, class_member, class_node unless node.obj.nil?
         append "."
+        append "__" if node.name == "super"
         append def_name
         append ")"
       end
