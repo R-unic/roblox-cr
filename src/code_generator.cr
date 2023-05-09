@@ -617,7 +617,6 @@ class CodeGenerator
     end
     @current_class_instance_vars.each_with_index do |instance_var, i|
       value = @current_class_instance_var_values[i]?
-      puts instance_var, value
       next if value.nil?
 
       append "self.private."
