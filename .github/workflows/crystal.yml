@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Set RBXCR variable
+      run: export RBXCR="../../"
     - name: Install dependencies
       run: shards install
     - name: Run tests
