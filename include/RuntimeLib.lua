@@ -1,4 +1,8 @@
-require "String"
+if _VERSION == "Lua 5.4" then
+  require "String"
+else
+  require(script.Parent.String)
+end
 
 local Crystal = {}
 
@@ -46,15 +50,16 @@ local to_f = function(val)
   return tonumber(val)
 end
 Crystal.to_f = to_f
-Crystal.to_f32 = to_f32
-Crystal.to_f64 = to_f64
+Crystal.to_f32 = to_f
+Crystal.to_f64 = to_f
 
 local to_i = function(val)
-  return math.floor(tonumber(val))
+  local n = tonumber(val)
+  return n ~= nil and n or nil
 end
 Crystal.to_i = to_i
-Crystal.to_i32 = to_i32
-Crystal.to_i64 = to_i64
+Crystal.to_i32 = to_i
+Crystal.to_i64 = to_i
 
 function Crystal.as(value)
   return value

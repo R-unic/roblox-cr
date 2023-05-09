@@ -3,7 +3,7 @@ local mt = getmetatable("")
 if not typeof then
   typeof = type
 end
-local function _assertType(v, t, message)
+local function _assertType(v, t)
   assert(typeof(v) == t, "Expected 'string', got '" .. typeof(v) .. "'")
 end
 
@@ -29,10 +29,15 @@ mt.__sub = function(a, b) --replace
   return a:gsub(b, "")
 end
 
+mt.__unm = function(s) --reverse
+  _assertType(s, "string")
+  return s:reverse()
+end
+
 mt.__mul = function(s, amt) --repeat
-  _assertType(a, "string")
-  _assertType(b, "string")
-  return s:rep(amount)
+  _assertType(s, "string")
+  _assertType(amt, "number")
+  return s:rep(amt)
 end
 
 mt.__div = function(a, b) --split
@@ -43,7 +48,7 @@ end
 
 mt.__mod = function(s, ...) --format
   _assertType(s, "string")
-  for _, formatter in pairs() do
+  for _, formatter in pairs {...} do
    _assertType(formatter, "string")
   end
   return s:format(...)
