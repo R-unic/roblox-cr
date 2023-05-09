@@ -1,6 +1,6 @@
 require "./code_generator"
 require "file_utils"
-require "json"
+require "yaml"
 
 module Transpiler
   @@rbxcr_path : String = ENV.has_key?("RBXCR") ? ENV["RBXCR"] : "./"
@@ -16,8 +16,8 @@ module Transpiler
     source = File.read("#{base_name}.cr")
     codegen = CodeGenerator.new(source, generation_mode, testing)
 
-    extracted_path = base_name.split("#{config.rootDir}/").last
-    out_path = "#{parent_dir}/#{config.outDir}/#{extracted_path}.lua"
+    extracted_path = base_name.split("#{config.root_dir}/").last
+    out_path = "#{parent_dir}/#{config.out_dir}/#{extracted_path}.lua"
     begin
       File.write(out_path, codegen.generate)
     rescue ex : Exception
@@ -37,9 +37,9 @@ module Transpiler
 
   private def self.get_config(dir_path : String) : RobloxCrystalConfig
     begin
-      config_json = File.read("#{dir_path}/config.crystal.json")
+      config_yml = File.read File.join(dir_path, "config.crystal.yml")
       begin
-        (JSON.parse(config_json).as?(RobloxCrystalConfig) unless config_json.nil?) || RobloxCrystalConfig.new("robloxcr-project", "src", "dist")
+        (YAML.parse(config_yml).as?(RobloxCrystalConfig) unless config_yml.nil?) || RobloxCrystalConfig.new("robloxcr-project", "src", "dist")
       rescue ex : Exception
         abort "Error parsing config: #{ex.message}", Exit::InvalidConfig.value
       end
@@ -51,11 +51,11 @@ module Transpiler
 
   private def self.check_project_structure(dir_path : String, config : RobloxCrystalConfig)
     return if !File.directory? dir_path
-    FileUtils.mkdir_p File.join(dir_path, config.outDir)
-    FileUtils.mkdir_p File.join(dir_path, config.rootDir)
-    FileUtils.mkdir_p File.join(dir_path, config.rootDir, "client")
-    FileUtils.mkdir_p File.join(dir_path, config.rootDir, "server")
-    FileUtils.mkdir_p File.join(dir_path, config.rootDir, "shared")
+    FileUtils.mkdir_p File.join(dir_path, config.out_dir)
+    FileUtils.mkdir_p File.join(dir_path, config.root_dir)
+    FileUtils.mkdir_p File.join(dir_path, config.root_dir, "client")
+    FileUtils.mkdir_p File.join(dir_path, config.root_dir, "server")
+    FileUtils.mkdir_p File.join(dir_path, config.root_dir, "shared")
   end
 
   def self.create_directory_structure(dir_path : String, config : RobloxCrystalConfig)
@@ -73,8 +73,8 @@ module Transpiler
     check_project_structure dir_path, config
 
     begin
-      create_directory_structure File.join(dir_path, config.rootDir), config # create directories in dist/
-      Dir.glob File.join(dir_path, config.rootDir, "**/*.cr") do |path|
+      create_directory_structure File.join(dir_path, config.root_dir), config # create directories in dist/
+      Dir.glob File.join(dir_path, config.root_dir, "**/*.cr") do |path|
         generation_mode = GenerationMode::Module
         if path.includes?(".client.")
           generation_mode = GenerationMode::Client
@@ -89,7 +89,7 @@ module Transpiler
         do_file(path, dir_path, generation_mode, config, testing)
       end
     rescue ex : Exception
-      abort "Error transpiling: Root directory '#{dir_path}/#{config.rootDir}' does not exist.", Exit::NoRootDir.value
+      abort "Error transpiling: Root directory '#{dir_path}/#{config.root_dir}' does not exist.", Exit::NoRootDir.value
     end
     copy_include dir_path
   end

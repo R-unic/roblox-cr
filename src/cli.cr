@@ -5,21 +5,20 @@ require "option_parser"
 require "readline"
 require "inotify-fixed"
 require "json"
-require "yaml"
 
 def bold(content : String)
   "\e[1m#{content}\e[0m"
 end
 
-def default_config(project_name : String) : YAML::Any
+def default_config(project_name : String) : String
   {
-    "name": project_name,
-    "root_dir": "src",
-    "out_dir": "dist"
+    "name" => project_name,
+    "root_dir" => "src",
+    "out_dir" => "dist"
   }.to_yaml
 end
 
-def default_project(config : RobloxCrystalConfig) : JSON::Any
+def default_project(config : RobloxCrystalConfig) : String
   {
     "name": config.name,
     "tree": {
@@ -32,13 +31,13 @@ def default_project(config : RobloxCrystalConfig) : JSON::Any
           }
         },
         "Crystal": {
-          "$path": "#{config.outDir}/shared"
+          "$path": "#{config.out_dir}/shared"
         }
       },
       "ServerScriptService": {
         "$className": "ServerScriptService",
         "Crystal": {
-          "$path": "#{config.outDir}/server"
+          "$path": "#{config.out_dir}/server"
         }
       },
       "StarterPlayer": {
@@ -46,7 +45,7 @@ def default_project(config : RobloxCrystalConfig) : JSON::Any
         "StarterPlayerScripts": {
           "$className": "StarterPlayerScripts",
           "Crystal": {
-            "$path": "#{config.outDir}/client"
+            "$path": "#{config.out_dir}/client"
           }
         }
       },
@@ -144,7 +143,7 @@ module CLI
     config_yml = default_config project_name
 
     begin
-      config = (JSON.parse(config_yml).as?(RobloxCrystalConfig) unless config_yml.nil?) || RobloxCrystalConfig.new("robloxcr-project", "src", "dist")
+      config = (YAML.parse(config_yml).as?(RobloxCrystalConfig) unless config_yml.nil?) || RobloxCrystalConfig.new("robloxcr-project", "src", "dist")
       FileUtils.mkdir(project_name)
       begin
         File.write "#{project_name}/default.project.json", default_project config
@@ -157,12 +156,12 @@ module CLI
         abort "Failed to write default Crystal config: #{ex.message}", Exit::FailedToWriteDefaultConfig.value
       end
       begin
-        FileUtils.mkdir_p "#{project_name}/#{config.rootDir}/client"
-        File.write "#{project_name}/#{config.rootDir}/client/main.client.cr", ""
-        FileUtils.mkdir_p "#{project_name}/#{config.rootDir}/server"
-        File.write "#{project_name}/#{config.rootDir}/server/main.server.cr", ""
-        FileUtils.mkdir_p "#{project_name}/#{config.rootDir}/shared"
-        File.write "#{project_name}/#{config.rootDir}/shared/module.cr", ""
+        FileUtils.mkdir_p "#{project_name}/#{config.root_dir}/client"
+        File.write "#{project_name}/#{config.root_dir}/client/main.client.cr", ""
+        FileUtils.mkdir_p "#{project_name}/#{config.root_dir}/server"
+        File.write "#{project_name}/#{config.root_dir}/server/main.server.cr", ""
+        FileUtils.mkdir_p "#{project_name}/#{config.root_dir}/shared"
+        File.write "#{project_name}/#{config.root_dir}/shared/module.cr", ""
       rescue ex : Exception
         abort "Failed to create project structure: #{ex.message}", Exit::FailedToCreateStructure.value
       end
