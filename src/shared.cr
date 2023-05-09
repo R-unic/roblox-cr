@@ -26,12 +26,12 @@ end
 
 class RobloxCrystalConfig
   property name : String
-  property rootDir : String
-  property outDir : String
+  property root_dir : String
+  property out_dir : String
 
   def initialize(
     @name = "rbxcr-project",
-    @rootDir = "src",
-    @outDir = "dist"
+    @root_dir = "src",
+    @out_dir = "dist"
   ) end
 end
