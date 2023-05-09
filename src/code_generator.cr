@@ -188,10 +188,19 @@ class CodeGenerator
       walk_node_list node.values
       newline
     when Assign
-      target = walk node.target, class_member, class_node, save_value
+      walk node.target, class_member, class_node, save_value
       append " = "
       walk node.value
-      newline
+    when OpAssign
+      walk node.target, class_member, class_node, save_value
+      unless @testing
+        append " #{node.op}= "
+      else
+        append " = "
+        walk node.target, class_member, class_node, save_value
+        append " #{node.op} "
+      end
+      walk node.value
     when Crystal::Path
       append node.names.join "."
     when Block
