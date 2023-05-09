@@ -82,12 +82,14 @@ class CodeGenerator
   private def walk(node : ASTNode | Float64 | String,
     class_member : Bool = false,
     class_node : (ClassDef | ModuleDef)? = nil,
-    save_value : Bool = false
+    save_value : Bool = false,
+    def_member : Bool = false
   )
     case node
     when Nop
     when Expressions
       node.expressions.each do |expr|
+        append "return " if def_member && expr == node.expressions.last
         walk expr, class_member, class_node, save_value
         newline unless expr == node.expressions.last
       end
@@ -309,7 +311,8 @@ class CodeGenerator
         append ")"
         start_block
 
-        walk node.body, class_member, class_node
+        append "return " unless node.body.is_a?(Expressions)
+        walk node.body, class_member, class_node, def_member: true
 
         end_block
         newline
