@@ -1,0 +1,3 @@
+name: test
+root_dir: src
+out_dir: dist
