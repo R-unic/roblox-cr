@@ -1,3 +1,5 @@
+require "String"
+
 local Crystal = {}
 
 function Crystal.list(t)
