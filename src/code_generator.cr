@@ -903,7 +903,9 @@ class CodeGenerator
   end
 
   private def get_bin_op?(name : String) : Regex::MatchData | Nil
-    /==/.match(name) || /!=/.match(name) || /\*\*/.match(name) || name.match(/[\+\-\*\/\%\|\&\^\~\=\<\>\?]/)
+    /==/.match(name) || /!=/.match(name) ||
+      /<=/.match(name) || />=/.match(name) ||
+      /\*\*/.match(name) || name.match(/[\+\-\*\/\%\|\&\^\~\=\<\>\?]/)
   end
 
   private def bin_op?(name : String) : Bool
