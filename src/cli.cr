@@ -3,7 +3,7 @@ require "./transpiler"
 require "benchmark"
 require "option_parser"
 require "readline"
-require "inotify"
+require "inotify-fixed"
 
 def bold(content : String)
   "\e[1m#{content}\e[0m"
