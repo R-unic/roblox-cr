@@ -4,20 +4,22 @@ require "benchmark"
 require "option_parser"
 require "readline"
 require "inotify-fixed"
+require "json"
+require "yaml"
 
 def bold(content : String)
   "\e[1m#{content}\e[0m"
 end
 
-def default_config(project_name : String)
+def default_config(project_name : String) : YAML::Any
   {
     "name": project_name,
-    "rootDir": "src",
-    "outDir": "dist"
-  }.to_json
+    "root_dir": "src",
+    "out_dir": "dist"
+  }.to_yaml
 end
 
-def default_project(config : RobloxCrystalConfig)
+def default_project(config : RobloxCrystalConfig) : JSON::Any
   {
     "name": config.name,
     "tree": {
@@ -139,10 +141,10 @@ module CLI
 
     # Create the directory structure
     return if project_name.nil?
-    config_json = default_config project_name
+    config_yml = default_config project_name
 
     begin
-      config = (JSON.parse(config_json).as?(RobloxCrystalConfig) unless config_json.nil?) || RobloxCrystalConfig.new("robloxcr-project", "src", "dist")
+      config = (JSON.parse(config_yml).as?(RobloxCrystalConfig) unless config_yml.nil?) || RobloxCrystalConfig.new("robloxcr-project", "src", "dist")
       FileUtils.mkdir(project_name)
       begin
         File.write "#{project_name}/default.project.json", default_project config
@@ -150,7 +152,7 @@ module CLI
         abort "Failed to write default Rojo project: #{ex.message}", Exit::FailedToWriteDefaultProject.value
       end
       begin
-        File.write "#{project_name}/config.crystal.json", config_json
+        File.write "#{project_name}/config.crystal.yml", config_yml
       rescue ex : Exception
         abort "Failed to write default Crystal config: #{ex.message}", Exit::FailedToWriteDefaultConfig.value
       end
