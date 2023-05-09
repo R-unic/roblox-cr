@@ -1,5 +1,10 @@
 require "compiler/crystal/syntax"; include Crystal
 
+OP_MAP = {
+  "**" => "^",
+  "!=" => "~="
+}
+
 class CodeGenerator
   getter ast : ASTNode?
   @out = ""
@@ -700,7 +705,7 @@ class CodeGenerator
     end
 
     append " "
-    append op
+    append OP_MAP.has_key?(op) ? OP_MAP[op] : op
     append " "
     walk node.args.first
     newline if op == "="
@@ -726,7 +731,7 @@ class CodeGenerator
   end
 
   private def get_bin_op?(name : String) : Regex::MatchData | Nil
-    /==/.match(name) || /!=/.match(name) || name.match(/[\+\-\*\/\%\|\&\^\~\=\<\>\?]/)
+    /==/.match(name) || /!=/.match(name) || /\*\*/.match(name) || name.match(/[\+\-\*\/\%\|\&\^\~\=\<\>\?]/)
   end
 
   private def bin_op?(name : String) : Bool
