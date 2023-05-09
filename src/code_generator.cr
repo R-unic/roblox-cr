@@ -104,9 +104,12 @@ class CodeGenerator
       walk node.string
       append ")"
       newline
-    when Return, Yield
+    when Return
       append "return "
       walk node.exp.not_nil! unless node.exp.nil?
+    when Yield
+      append "return "
+      walk node.exps.first unless node.exps.empty?
     when Break
       append "break"
     when VisibilityModifier
