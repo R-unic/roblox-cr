@@ -30,7 +30,7 @@ class CodeGenerator
   end
 
   private def to_pascal(name : String)
-    name.split("_").map { |s| s.capitalize }.join ""
+    name.split("_").map(&.capitalize).join ""
   end
 
   private def append_dependencies
@@ -181,7 +181,7 @@ class CodeGenerator
     when Assign
       target = walk node.target, class_member, class_node, save_value
       append " = "
-      value = walk node.value
+      walk node.value
       newline
     when Crystal::Path
       append node.names.join "."
@@ -249,14 +249,14 @@ class CodeGenerator
       append " or "
       walk node.right
     when Call
-      if is_bin_op?(node.name)
+      if bin_op?(node.name)
         walk_bin_op node
-      elsif is_un_op?(node.name)
+      elsif un_op?(node.name)
         append "("
         append node.name
         walk node.args.first
         append ")"
-      elsif is_postfix?(node.name)
+      elsif postfix?(node.name)
         walk_postfix node
       elsif node.name == "getter" || node.name == "setter" || node.name == "property"
         @current_class_members << [node.args.first, node].as Array(ASTNode)
@@ -708,11 +708,11 @@ class CodeGenerator
     append ")"
   end
 
-  private def is_postfix?(name : String) : Bool
+  private def postfix?(name : String) : Bool
     name.match(/\[\]/) != nil
   end
 
-  private def is_un_op?(name : String) : Bool
+  private def un_op?(name : String) : Bool
     name.match(/\!\~\@/) != nil
   end
 
@@ -720,7 +720,7 @@ class CodeGenerator
     /==/.match(name) || name.match(/[\+\-\*\/\%\|\&\^\~\!\=\<\>\?\:\.]/)
   end
 
-  private def is_bin_op?(name : String) : Bool
+  private def bin_op?(name : String) : Bool
     get_bin_op?(name) != nil
   end
 

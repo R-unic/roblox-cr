@@ -86,8 +86,6 @@ module Transpiler
         FileUtils.cp_r(path, dir_path) unless path.ends_with? ".cr"
 
         # transpile .cr file and write to .lua file in dist/
-        lua_path = path.gsub(File.join(dir_path, config.rootDir), File.join(dir_path, config.outDir)).gsub(".cr", ".lua")
-        lua_dir = File.dirname lua_path
         do_file(path, dir_path, generation_mode, config, testing)
       end
     rescue ex : Exception
