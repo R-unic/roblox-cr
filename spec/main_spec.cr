@@ -5,7 +5,6 @@ def get_lua(source : String)
 end
 
 describe CodeGenerator do
-  # TODO: Write tests
   describe "#generate" do
     it "should check if instance member is method before calling" do
       lua = get_lua %(

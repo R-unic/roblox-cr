@@ -16,6 +16,8 @@ dependencies:
   inotify-fixed:
     github: R-unic/inotify-fixed
     version: 1.0.1
+  lua:
+    github: veelenga/lua.cr
 
 crystal: 1.8.1
 license: MIT
