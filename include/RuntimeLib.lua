@@ -8,7 +8,12 @@ local Crystal = {}
 
 function Crystal.isA(value, type)
   if typeof(value) == "table" then
-    return value.__class == type or (getmetatable(value) and getmetatable(value) == type or false)
+    eq = value.__class == type or (getmetatable(value) and getmetatable(value) == type or false)
+    if value.__super then
+      return eq or Crystal.isA(value.__super, type)
+    else
+      return eq
+    end
   else
     return typeof(value) == type
   end

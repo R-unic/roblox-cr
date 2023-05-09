@@ -291,6 +291,7 @@ class CodeGenerator
     when Arg
       append node.name
     when Def
+      node.name = node.name.gsub('?', "")
       if class_member ? node.name != "initialize" : true
         append "function "
         if class_member
@@ -339,6 +340,7 @@ class CodeGenerator
       append " or "
       walk node.right
     when Call
+      node.name = node.name.gsub('?', "")
       if bin_op?(node.name)
         walk_bin_op node
       elsif un_op?(node.name)
@@ -361,7 +363,20 @@ class CodeGenerator
       if save_value
         @current_class_instance_vars << node
       else
-        append node.name.gsub(/@/, "self.")
+        parent_node = nil
+        member_data = @current_class_members.find do |member_list|
+          _, call = member_list
+          decl_node = call.as(Call).args.first
+          matching = false
+          case decl_node
+          when TypeDeclaration
+            name = walk decl_node.var
+            chop name.as(String).size
+            matching = name == node.name.gsub(/@/, "")
+          end
+          matching
+        end
+        walk_class_member_assignment member_data[0], member_data[1], class_node unless member_data.nil?
       end
     when ClassVar
       if class_node.is_a?(ClassDef)
@@ -440,6 +455,7 @@ class CodeGenerator
     append " = {} do"
     start_block
 
+    walk _module.name; append ".__class = \"Module\""; newline
     if class_member
       append "local "; walk _module.name; append " = "
       walk class_node.not_nil!.name; append "."; walk _module.name
@@ -472,6 +488,7 @@ class CodeGenerator
     append " = {} do"
     start_block
 
+    walk _class.name; append ".__class = \"Class\""; newline
     if class_member
       append "local "; walk _class.name; append " = "
       walk class_node.not_nil!.name; append "."; walk _class.name
@@ -493,10 +510,41 @@ class CodeGenerator
     append "end"; newline
   end
 
+  private def walk_class_member_assignment(decl_node : ASTNode, parent_node : ASTNode, _class : (ClassDef | ModuleDef)?)
+    case decl_node
+    when Def
+    when TypeDeclaration
+      append "self."
+      macro_name = parent_node.as(Call).name
+      case macro_name
+      when "property"
+        append "accessors."
+        walk decl_node, class_member: true, class_node: _class
+        newline
+        append "self.writable"
+      when "setter"
+        append macro_name
+        append "s."
+        walk decl_node, class_member: true, class_node: _class
+        newline
+        append "self.writable"
+      else
+        append macro_name
+        append "s"
+      end
+      append "."
+      walk decl_node, class_member: true, class_node: _class
+      newline
+    else
+      raise "Unhandled class member node: #{decl_node.class}"
+    end
+  end
+
   private def walk_ctor(_class : ClassDef | ModuleDef)
     append "function "
     walk _class.name
     append ".new("
+    walk_ctor_args _class
     append ")"
     start_block
 
@@ -509,6 +557,11 @@ class CodeGenerator
       append "{}"
     end
     append " })"; newline
+    unless !_class.is_a?(ClassDef) || _class.as(ClassDef).superclass.nil?
+      append "meta.__super = "
+      walk _class.as(ClassDef).superclass.not_nil!
+      newline
+    end
     append "meta.__class = \""; walk _class.name; append "\""; newline
 
     append "for "
@@ -530,11 +583,6 @@ class CodeGenerator
 
     newline
     append "local self = setmetatable({}, { __index = meta })"; newline
-    unless !_class.is_a?(ClassDef) || _class.as(ClassDef).superclass.nil?
-      append "self.__super = "
-      walk _class.as(ClassDef).superclass.not_nil!
-      newline
-    end
     append "self.accessors = setmetatable({}, { __index = meta.accessors or {} })"; newline
     append "self.getters = setmetatable({}, { __index = meta.getters or {} })"; newline
     append "self.setters = setmetatable({}, { __index = meta.setters or {} })"; newline
@@ -542,32 +590,17 @@ class CodeGenerator
     append "self.private = {}"; newline
     newline
 
+    # Find a Def node with the name "initialize"
+    if _class.is_a?(ClassDef)
+      walk_ctor_body _class.as(ClassDef)
+    else
+      walk_ctor_body _class.as(ModuleDef)
+    end
+
     @current_class_members.each do |member|
       decl_node, parent_node = member
-      case decl_node
-      when Def
-      when TypeDeclaration
-        append "self."
-        macro_name = parent_node.as(Call).name
-        case macro_name
-        when "property"
-          append "accessors"
-        when "setter"
-          append macro_name
-          append "s."
-          walk decl_node, class_member: true, class_node: _class
-          newline
-          append "self.writable"
-        else
-          append macro_name
-          append "s"
-        end
-        append "."
-        walk decl_node, class_member: true, class_node: _class
-        newline
-      else
-        raise "Unhandled class member node: #{decl_node.class}"
-      end
+      next if decl_node.is_a?(TypeDeclaration) && decl_node.as(TypeDeclaration).value.nil?
+      walk_class_member_assignment decl_node, parent_node, _class
     end
     @current_class_instance_vars.each_with_index do |instance_var, i|
       value = @current_class_instance_var_values[i]?
@@ -583,13 +616,6 @@ class CodeGenerator
     @current_class_instance_var_values = [] of ASTNode
     @current_class_members = [] of Array(ASTNode)
     @current_class_includes = [] of String
-
-    # Find a Def node with the name "initialize"
-    if _class.is_a?(ClassDef)
-      walk_ctor_body _class.as(ClassDef)
-    else
-      walk_ctor_body _class.as(ModuleDef)
-    end
 
     newline
     append "return setmetatable(self, {"; start_block
@@ -625,7 +651,7 @@ class CodeGenerator
     newline
     append "else"; start_block
     append "Crystal." unless @testing
-    append "error(\"Attempt to assign to getter\")"; end_block
+    append "error(\"Attempt to assign to getter\", 2)"; end_block
 
     newline
     append "end"; end_block
@@ -641,19 +667,34 @@ class CodeGenerator
     end_block
   end
 
-  private def walk_ctor_body(_class : T) forall T
+  private def get_ctor(_class : T) forall T
     initializer_def = _class.as(T).body.is_a?(Expressions) ?
       _class.as(T).body.as(Expressions).expressions.find { |expr| expr.is_a?(Def) && expr.as(Def).name == "initialize" }
       : (_class.as(T).body.is_a?(Def) && _class.as(T).body.as(Def).name == "initialize" ? _class.as(T).body.as(Def) : nil)
+  end
 
-    unless initializer_def.nil?
-      walk _class.as(T).body unless _class.as(T).body.as(Expressions).expressions.pop.is_a?(Def)
-      walk initializer_def.as(Def).body
+  private def walk_ctor_args(_class : T) forall T
+    initializer_def = get_ctor _class
+    return if initializer_def.nil?
+
+    args = initializer_def.as(Def).args
+    args.each do |arg|
+      walk arg
+      append ", " unless arg == args.last
     end
   end
 
+  private def walk_ctor_body(_class : T) forall T
+    initializer_def = get_ctor _class
+    return if initializer_def.nil?
+
+    walk _class.as(T).body unless _class.as(T).body.as(Expressions).expressions.pop.is_a?(Def)
+    initializer_def.as(Def).body.as(Expressions).expressions.reverse! if initializer_def.as(Def).body.is_a?(Expressions)
+    walk initializer_def.as(Def).body
+  end
+
   private def walk_named_tuple(node : Generic)
-    @out = @out.gsub(/NamedTuple/, "")
+    chop "NamedTuple".size
     append "{"
     start_block
 
@@ -708,19 +749,35 @@ class CodeGenerator
       .gsub(/sleep/, "wait")
 
     check_fn = node.args.size < 1 && def_name != "new"
-    if !node.obj.nil? && node.obj.is_a?(Crystal::Path) && node.obj.as(Crystal::Path).names.first == "Rbx"
+    if !node.obj.nil? && node.obj.is_a?(Crystal::Path) && node.obj.as(Crystal::Path).names.first == "Rbx" # pascal case roblox methods
       def_name = to_pascal def_name
       node.obj.as(Crystal::Path).names.shift
     end
 
-    if @macros.includes?(def_name)
-      append "Crystal."
-      append def_name
-      append "("
-      walk node.obj.not_nil! unless node.obj.nil?
-      append ", " unless node.obj.nil? && check_fn
-      walk_call_args node, check_fn
-      append ")"
+    if @macros.includes?(def_name) || (def_name == "super" && node.args.size > 0)
+      if def_name == "super"
+        append "local superInstance = self.__super.new("
+        walk_call_args node, check_fn
+        append ")"
+        newline
+        append "for k, v in pairs(superInstance) do"
+        start_block
+
+        append "self[k] = v"
+
+        end_block
+        newline
+        append "end"
+        newline
+      else
+        append "Crystal."
+        append def_name
+        append "("
+        walk node.obj.not_nil! unless node.obj.nil?
+        append ", " unless node.obj.nil? && check_fn
+        walk_call_args node, check_fn
+        append ")"
+      end
     else
       call_op = def_name == "new" ? "." : ":"
       unless node.obj.nil? || def_name == "new"
@@ -757,7 +814,7 @@ class CodeGenerator
         unless node.obj.nil?
           walk node.obj.not_nil!, class_member, class_node
         else
-          append "self." unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+          append "self:" unless @current_class_members.select { |m| m[0].is_a?(Def) && m[0].as(Def).name == def_name }.empty?
         end
         append call_op unless node.obj.nil?
       end
@@ -791,6 +848,7 @@ class CodeGenerator
         append "__" if node.name == "super"
         append def_name
         append ")"
+        append ";" if fake_assign
         newline if fake_assign
       end
     end
