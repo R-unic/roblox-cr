@@ -158,8 +158,9 @@ class CodeGenerator
       start_block
 
       node.entries.each do |entry|
+        append "["
         walk entry.key
-        append " = "
+        append "] = "
         walk entry.value
         unless entry == node.entries.last
           append ","
@@ -167,8 +168,8 @@ class CodeGenerator
         end
       end
 
-      newline
       end_block
+      newline
       append "}"
     when Generic
       walk_named_tuple node if (walk node.name) == "NamedTuple"
@@ -638,7 +639,7 @@ class CodeGenerator
         unless node.obj.nil?
           walk node.obj.not_nil!, class_member, class_node
         else
-          append "self" if @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+          append "self." unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
         end
         append call_op unless node.obj.nil?
       end
