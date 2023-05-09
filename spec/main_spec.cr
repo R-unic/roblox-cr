@@ -6,6 +6,12 @@ end
 
 describe CodeGenerator do
   describe "#generate" do
+    it "should generate hello world" do
+      lua = get_lua %q{
+        puts "hello world"
+      }
+      lua.split('\n').last.should eq "print(\"hello world\")"
+    end
     it "should check if instance member is method before calling" do
       lua = get_lua %q{
         class A
