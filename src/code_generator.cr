@@ -292,23 +292,33 @@ class CodeGenerator
         end
       end
     when If
-      append "if "
-      walk node.cond
-      append " then"
-      start_block
+      if node.ternary?
+        append "("
+        walk node.cond
+        append " and "
+        walk node.then
+        append " or "
+        walk node.else
+        append ")"
+      else
+        append "if "
+        walk node.cond
+        append " then"
+        start_block
 
-      walk node.then
+        walk node.then
 
-      end_block
-      newline
-      append "else"
-      start_block
+        end_block
+        newline
+        append "else"
+        start_block
 
-      walk node.else
+        walk node.else
 
-      end_block
-      newline
-      append "end"
+        end_block
+        newline
+        append "end"
+      end
     else
       raise "Unhandled node: #{node.class}"
     end
@@ -716,7 +726,7 @@ class CodeGenerator
   end
 
   private def get_bin_op?(name : String) : Regex::MatchData | Nil
-    /==/.match(name) || name.match(/[\+\-\*\/\%\|\&\^\~\!\=\<\>\?\:\.]/)
+    /==/.match(name) || /!=/.match(name) || name.match(/[\+\-\*\/\%\|\&\^\~\=\<\>\?]/)
   end
 
   private def bin_op?(name : String) : Bool
