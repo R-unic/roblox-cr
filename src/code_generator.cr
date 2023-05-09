@@ -112,6 +112,29 @@ class CodeGenerator
       end
     when Var, Global
       append node.name
+    when UninitializedVar
+      raise "Uninitialized variables are not supported."
+    when ExceptionHandler
+      has_rescues = node.rescues.nil? ? false : !node.rescues.not_nil!.empty?
+      raise "Multiple rescue blocks are not supported." if has_rescues && node.rescues.not_nil!.size > 1
+      raise "'else' in begin-rescue blocks not supported, use rescue instead." unless node.else.nil?
+
+      append "xpcall(function()"
+      start_block
+
+      walk node.body
+
+      end_block
+      newline
+      append "end, function(#{has_rescues ? node.rescues.not_nil!.first.name : ""})"
+      start_block
+
+      walk node.rescues.not_nil!.first.body if has_rescues
+
+      end_block
+      newline
+      append "end)"
+      walk node.ensure.not_nil! unless node.ensure.nil?
     when Number
       append node.to_s
     when String
@@ -176,8 +199,8 @@ class CodeGenerator
         newline
 
         end_block
-        append "end"
         newline
+        append "end"
 
         end_block
       else
