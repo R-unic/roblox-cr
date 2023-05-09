@@ -21,7 +21,7 @@ module Transpiler
     begin
       File.write(out_path, codegen.generate)
     rescue ex : Exception
-      abort "Code generation failed: #{ex.message}", Exit::CodeGenFailed.value
+      abort "Code generation failed: #{ex.backtrace.join '\n'}", Exit::CodeGenFailed.value
     end
   end
 

@@ -211,6 +211,7 @@ class CodeGenerator
           else
             walk class_node.not_nil!.name
           end
+
           accessor = ":"
           unless node.receiver.nil?
             accessor = "." if node.receiver.as(Var).name == "self"
@@ -262,8 +263,10 @@ class CodeGenerator
       else
         walk_fn_call node, class_member, class_node
       end
-    when ClassDef, ModuleDef
-      walk_class_def node
+    when ModuleDef
+      walk_module_def node, class_member, class_node
+    when ClassDef
+      walk_class_def node, class_member, class_node
     when InstanceVar
       if save_value
         @current_class_instance_vars << node
@@ -310,24 +313,75 @@ class CodeGenerator
     end
   end
 
-  private def walk_class_def(_class : ClassDef | ModuleDef)
-    append "--"
-    append _class.is_a?(ClassDef) ? "classdef" : "moduledef"  # comment for readability and such
+  private def walk_module_def(_module : ModuleDef, class_member : Bool, class_node : (ClassDef | ModuleDef)?)
+    append "--moduledef" # comment for readability and such
     newline
-    walk _class.name
+
+    if class_member
+      walk class_node.not_nil!.name
+      append "."
+    end
+    walk _module.name
     append " = {} do"
     start_block
 
-    @class_names << _class.name.names.join "::"
-    walk _class.body, class_member: true, class_node: _class, save_value: true unless _class.body.is_a?(Call)
-    walk_class_ctor _class
+    if class_member
+      append "local "; walk _module.name; append " = "
+      walk class_node.not_nil!.name; append "."; walk _module.name
+      newline
+    end
+
+    walk _module.body, class_member: true, class_node: _module, save_value: true unless _module.body.is_a?(Call)
+    walk_ctor _module
+
+    if class_member
+      start_block
+      walk class_node.not_nil!.name; append "."; walk _module.name
+      append " = "; walk _module.name
+      end_block
+    end
 
     newline
     append "end"; newline
   end
 
-  private def walk_class_ctor(_class : ClassDef | ModuleDef)
-    append "function "; walk _class.name; append ".new("
+  private def walk_class_def(_class : ClassDef, class_member : Bool, class_node : (ClassDef | ModuleDef)?)
+    append "--classdef" # comment for readability and such
+    newline
+
+    if class_member
+      walk class_node.not_nil!.name
+      append "."
+    end
+    walk _class.name
+    append " = {} do"
+    start_block
+
+    if class_member
+      append "local "; walk _class.name; append " = "
+      walk class_node.not_nil!.name; append "."; walk _class.name
+      newline
+    end
+
+    @class_names << _class.name.names.join "::"
+    walk _class.body, class_member: true, class_node: _class, save_value: true unless _class.body.is_a?(Call)
+    walk_ctor _class
+
+    if class_member
+      start_block
+      walk class_node.not_nil!.name; append "."; walk _class.name
+      append " = "; walk _class.name
+      end_block
+    end
+
+    newline
+    append "end"; newline
+  end
+
+  private def walk_ctor(_class : ClassDef | ModuleDef)
+    append "function "
+    walk _class.name
+    append ".new("
     append ")"
     start_block
 
@@ -535,7 +589,6 @@ class CodeGenerator
 
   private def walk_fn_call(node : Call, class_member : Bool, class_node : (ClassDef | ModuleDef)?)
     def_name = node.name.gsub(/puts/, "print")
-    newline if def_name == "print"
     check_fn = node.args.size < 1 && def_name != "new"
 
     if !node.obj.nil? && node.obj.is_a?(Crystal::Path) && node.obj.as(Crystal::Path).names.first == "Rbx"
@@ -569,7 +622,8 @@ class CodeGenerator
       end
 
       if check_fn
-        append "local _ = " if @out.chars.last == '\n' || @out.chars.last == '\t'
+        fake_assign = @out.chars.last == '\n' || @out.chars.last == '\t'
+        append "local _ = " if fake_assign
         append "(type#{!@testing ? "of" : ""}("
         append "self" if node.name == "super"
 
@@ -618,6 +672,7 @@ class CodeGenerator
         append "__" if node.name == "super"
         append def_name
         append ")"
+        newline if fake_assign
       end
     end
   end
