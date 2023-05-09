@@ -97,13 +97,14 @@ module CLI
       end
     end
 
-    result = Benchmark.measure do
-      parser.parse(ARGV)
-      return if @@init
-      Transpiler.do_directory dir_path: @@path, testing: @@test
-    end
-
+    parser.parse(ARGV)
+    result = Benchmark.measure { transpile }
     puts "Finished. Took (#{(result.real * 1000).ceil.to_i}ms)"
+  end
+
+  def self.transpile
+    return if @@init
+    Transpiler.do_directory dir_path: @@path, testing: @@test
   end
 
   def self.init_project
