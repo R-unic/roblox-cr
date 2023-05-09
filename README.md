@@ -9,7 +9,8 @@ roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of Crystal
 
 ## Will not be added
 
-- Loop blocks
+- `loop` blocks
+- `out` keyword
 
 ## Installation
 

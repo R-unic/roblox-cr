@@ -83,6 +83,14 @@ class CodeGenerator
       walk node.string
       append ")"
       newline
+    when VisibilityModifier
+      case node.modifier
+      when Visibility::Private
+        append "local " unless class_member
+        walk node.exp
+      else
+        raise "Unhandled visibility modifier: #{node.modifier}"
+      end
     when Var, Global
       append node.name
     when Number
@@ -221,7 +229,6 @@ class CodeGenerator
       append node.name
     when Def
       if class_member ? node.name != "initialize" : true
-        append "local " if !class_member
         append "function "
         if class_member
           @current_class_members << [node.as ASTNode, node.as ASTNode]
@@ -662,6 +669,8 @@ class CodeGenerator
           obj_name = node.obj.as(Call).name
         when Var
           obj_name = node.obj.as(Var).name
+        when Global
+          obj_name = node.obj.as(Global).name
         else
           raise "Unhandled object node for call: #{node.obj.class}"
         end
