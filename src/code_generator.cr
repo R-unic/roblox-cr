@@ -309,9 +309,11 @@ class CodeGenerator
           newline if node.var.is_a?(ClassVar)
         end
       end
-    when While
+    when While, Until
       append "while "
+      append "not (" if node.is_a?(Until)
       walk node.cond
+      append ")" if node.is_a?(Until)
       append " do"
       start_block
 
@@ -320,8 +322,8 @@ class CodeGenerator
       end_block
       newline
       append "end"
-    when If
-      if node.ternary?
+    when If, Unless
+      if node.is_a?(If) && node.as(If).ternary?
         append "("
         walk node.cond
         append " and "
@@ -331,7 +333,9 @@ class CodeGenerator
         append ")"
       else
         append "if "
+        append "not (" if node.is_a?(Unless)
         walk node.cond
+        append ")" if node.is_a?(Unless)
         append " then"
         start_block
 
