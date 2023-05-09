@@ -107,9 +107,10 @@ class CodeGenerator
       walk node.to
       append ")"
     when StringLiteral, CharLiteral, RegexLiteral
-      append '"'.to_s
+      multiline = node.value.to_s.split('\n').size > 1
+      append multiline ? "[[" : "\""
       append node.value.to_s
-      append '"'.to_s
+      append multiline ? "]]" : "\""
     when NilLiteral
       append "nil"
     when SymbolLiteral
