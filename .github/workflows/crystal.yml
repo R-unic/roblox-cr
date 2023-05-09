@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install liblua
-      run: sudo apt-get install liblua5.4-dev
+      run: apt-get install liblua5.4-dev
     - name: Install dependencies
       run: shards install
     - name: Run tests
