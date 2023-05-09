@@ -68,7 +68,10 @@ class CodeGenerator
     case node
     when Nop
     when Expressions
-      node.expressions.each { |expr| walk expr, class_member, class_node, save_value }
+      node.expressions.each do |expr|
+        walk expr, class_member, class_node, save_value
+        newline unless expr == node.expressions.last
+      end
     when Include
       name = walk node.name
       unless name.nil? || !name.is_a?(String)
@@ -296,6 +299,17 @@ class CodeGenerator
           newline if node.var.is_a?(ClassVar)
         end
       end
+    when While
+      append "while "
+      walk node.cond
+      append " do"
+      start_block
+
+      walk node.body
+
+      end_block
+      newline
+      append "end"
     when If
       if node.ternary?
         append "("
@@ -604,9 +618,12 @@ class CodeGenerator
   end
 
   private def walk_fn_call(node : Call, class_member : Bool, class_node : (ClassDef | ModuleDef)?)
-    def_name = node.name.gsub(/puts/, "print")
-    check_fn = node.args.size < 1 && def_name != "new"
+    def_name = node.name
+      .gsub(/puts/, "print")
+      .gsub(/sleep/, "wait")
+      .gsub(/loop/, "Crystal.loop")
 
+    check_fn = node.args.size < 1 && def_name != "new"
     if !node.obj.nil? && node.obj.is_a?(Crystal::Path) && node.obj.as(Crystal::Path).names.first == "Rbx"
       def_name = to_pascal def_name
       node.obj.as(Crystal::Path).names.shift
