@@ -3,6 +3,7 @@ require "./transpiler"
 require "benchmark"
 require "option_parser"
 require "readline"
+require "inotify"
 
 def bold(content : String)
   "\e[1m#{content}\e[0m"
@@ -74,6 +75,8 @@ module CLI
   @@test = false
   @@init = false
   @@path = "."
+  @@last_changed_time : Float64? = nil
+  @@debounce_interval = 0.25 # seconds
 
   def self.run
     parser = OptionParser.new do |opts|
@@ -98,13 +101,35 @@ module CLI
     end
 
     parser.parse(ARGV)
-    result = Benchmark.measure { transpile }
-    puts "Finished. Took (#{(result.real * 1000).ceil.to_i}ms)"
+    if @@watch
+      start_watch_mode
+    else
+      transpile
+    end
+  end
+
+  def self.start_watch_mode
+    puts "Started #{bold "roblox-cr"} in watch mode."
+    puts bold "Watching #{@@path} for changes..."
+    transpile
+    Inotify.watch @@path, recursive: true do |ev|
+      if @@last_changed_time.nil? || Time.utc.to_unix_f - @@last_changed_time.not_nil! >= @@debounce_interval
+        unless [".cr", ".yml"].includes?(ev.name)
+          puts bold "File change detected, compiling..."
+          transpile
+          @@last_changed_time = Time.utc.to_unix_f
+        end
+      end
+    end
+    sleep
   end
 
   def self.transpile
     return if @@init
-    Transpiler.do_directory dir_path: @@path, testing: @@test
+    result = Benchmark.measure do
+      Transpiler.do_directory dir_path: @@path, testing: @@test
+    end
+    puts "Finished. Took (#{(result.real * 1000).ceil.to_i}ms)"
   end
 
   def self.init_project

@@ -11,10 +11,11 @@ targets:
 dependencies:
   readline:
     github: crystal-lang/crystal-readline
+  logger:
+    github: crystal-lang/logger.cr
   inotify:
     github: petoem/inotify.cr
     version: 1.0.1
 
 crystal: 1.8.1
-
 license: MIT

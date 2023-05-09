@@ -4,6 +4,10 @@ shards:
     git: https://github.com/petoem/inotify.cr.git
     version: 1.0.1
 
+  logger:
+    git: https://github.com/crystal-lang/logger.cr.git
+    version: 0.1.0
+
   readline:
     git: https://github.com/crystal-lang/crystal-readline.git
     version: 0.1.1
