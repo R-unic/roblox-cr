@@ -3,6 +3,19 @@
 
 roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of Crystal code and converts it into Lua.
 
+## Installation
+
+1. Clone the repository
+2. Run `make install`
+3. Check if everything is working by running `rbxcr -h`
+
+## Usage
+
+1. Make a Roblox Crystal project using `rbxcr --init`
+2. Write some code
+3. Compile using `rbxcr` if you're inside of your project folder, otherwise `rbxcr -D <project_dir>`
+4. Sync to Roblox using [Rojo](https://rojo.space/) or another syncing plugin.
+
 ## Might be added
 
 - Macros
@@ -11,12 +24,6 @@ roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of Crystal
 
 - `loop` blocks
 - `out` keyword
-
-## Installation
-
-1. Clone the repository
-2. Run `make install`
-3. Check if everything is working by running `rbxcr -h`
 
 ## Contributing
 
