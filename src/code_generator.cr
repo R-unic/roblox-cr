@@ -104,6 +104,11 @@ class CodeGenerator
       walk node.string
       append ")"
       newline
+    when Return, Yield
+      append "return "
+      walk node.exp.not_nil! unless node.exp.nil?
+    when Break
+      append "break"
     when VisibilityModifier
       case node.modifier
       when Visibility::Private
@@ -698,7 +703,6 @@ class CodeGenerator
     def_name = node.name
       .gsub(/puts/, "print")
       .gsub(/sleep/, "wait")
-      .gsub(/loop/, "Crystal.loop")
 
     check_fn = node.args.size < 1 && def_name != "new"
     if !node.obj.nil? && node.obj.is_a?(Crystal::Path) && node.obj.as(Crystal::Path).names.first == "Rbx"
@@ -711,7 +715,7 @@ class CodeGenerator
       append def_name
       append "("
       walk node.obj.not_nil! unless node.obj.nil?
-      append ", " unless node.obj.nil? || check_fn
+      append ", " unless node.obj.nil? && check_fn
       walk_call_args node, check_fn
       append ")"
     else
