@@ -701,12 +701,10 @@ class CodeGenerator
     left = node.name.chars.first.to_s
     right = node.name.chars.last.to_s
 
-    append "("
     walk node.obj.not_nil!
     append left
     node.args.each { |arg| walk arg }
     append right
-    append ")"
   end
 
   private def postfix?(name : String) : Bool
