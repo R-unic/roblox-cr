@@ -5,6 +5,25 @@ OP_MAP = {
   "!=" => "~="
 }
 
+TYPE_MAP = {
+  "Bool" => "boolean",
+  "String" => "string",
+  "Proc" => "function",
+  "Nil" => "nil",
+  "Array" => "table",
+  "Hash" => "table",
+  "Tuple" => "table",
+  "NamedTuple" => "table",
+  "Int8" => "number",
+  "Int16" => "number",
+  "Int32" => "number",
+  "Int64" => "number",
+  "Float8" => "number",
+  "Float16" => "number",
+  "Float32" => "number",
+  "Float64" => "number"
+}
+
 class CodeGenerator
   getter ast : ASTNode?
   @out = ""
@@ -190,6 +209,17 @@ class CodeGenerator
       append "}"
     when Generic
       walk_named_tuple node if (walk node.name) == "NamedTuple"
+    when IsA
+      append "Crystal.isA"
+      append "("
+      walk node.obj
+      append ", \""
+      type_name = node.const.is_a?(Generic) ?
+        node.const.as(Generic).name.as(Crystal::Path).names.join('.').split('(').first
+        : node.const.as(Crystal::Path).names.join '.'
+
+      append TYPE_MAP.has_key?(type_name) ? TYPE_MAP[type_name] : type_name
+      append "\")"
     when MultiAssign
       walk_node_list node.targets
       append " = "

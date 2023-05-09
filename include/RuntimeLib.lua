@@ -6,6 +6,14 @@ end
 
 local Crystal = {}
 
+function Crystal.isA(value, type)
+  if typeof(value) == "table" then
+    return value.__class == type or (getmetatable(value) and getmetatable(value) == type or false)
+  else
+    return typeof(value) == type
+  end
+end
+
 function Crystal.list(t)
   local i = 0
   return function()
