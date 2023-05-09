@@ -16,10 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Add Lua PPA
-      run: add-apt-repository -y ppa:lua/ubuntu
-    - name: Install liblua
-      run: apt-get install -y liblua5.4-dev
+    - uses: leafo/gh-actions-lua@v10
     - name: Install dependencies
       run: shards install
     - name: Run tests
