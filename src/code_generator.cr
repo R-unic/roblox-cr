@@ -629,10 +629,10 @@ class CodeGenerator
 
         unless node.obj.nil?
           walk node.obj.not_nil!, class_member, class_node
+          append "."
         else
-          append "self" unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+          append "self." unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
         end
-        append "."
         append "__" if node.name == "super"
       else
         unless node.obj.nil?
@@ -649,10 +649,10 @@ class CodeGenerator
         append "self" if node.name == "super"
         unless node.obj.nil?
           walk node.obj.not_nil!, class_member, class_node
+          append call_op
         else
-          append "self" unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+          append "self#{call_op}" unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
         end
-        append call_op
         append "__" if node.name == "super"
         append def_name
       end
@@ -665,10 +665,10 @@ class CodeGenerator
         append "self" if node.name == "super"
         unless node.obj.nil?
           walk node.obj.not_nil!, class_member, class_node
+          append "."
         else
-          append "self" unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
+          append "self." unless @current_class_members.select { |m| m[0].is_a?(Def) }.empty?
         end
-        append "."
         append "__" if node.name == "super"
         append def_name
         append ")"
