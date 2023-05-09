@@ -42,6 +42,7 @@ class CodeGenerator
     begin
       parser = Parser.new(source)
       @ast = parser.parse
+      ENV["RBXCR"] = File.dirname File.dirname(__FILE__) if @testing && !ENV.has_key?("RBXCR")
     rescue ex : Exception
       abort "Crystal failed to compile: #{ex.message}", Exit::CodeGenFailed.value
     end
