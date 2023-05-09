@@ -3,9 +3,17 @@
 
 roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of Crystal code and converts it into Lua.
 
+## Might be added
+
+- Macros
+
+## Will not be added
+
+- Loop blocks
+
 ## Installation
 
-1. Clone the repo
+1. Clone the repository
 2. Run `make install`
 3. Check if everything is working by running `rbxcr -h`
 

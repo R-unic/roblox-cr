@@ -182,7 +182,6 @@ class CodeGenerator
     when Generic
       walk_named_tuple node if (walk node.name) == "NamedTuple"
     when MultiAssign
-      append "local "
       walk_node_list node.targets
       append " = "
       walk_node_list node.values
@@ -191,6 +190,7 @@ class CodeGenerator
       walk node.target, class_member, class_node, save_value
       append " = "
       walk node.value
+      newline
     when OpAssign
       walk node.target, class_member, class_node, save_value
       unless @testing
