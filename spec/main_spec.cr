@@ -19,7 +19,7 @@ describe CodeGenerator do
         end
         A.new.member
       }
-      lua.split('\n')[-2].should eq "local _ = (type(A.new().member) == \"function\" and A.new():member() or A.new().member);"
+      lua.split('\n')[-2].should eq "local _ = (type(A.new().Member) == \"function\" and A.new():Member() or A.new().Member);"
     end
     it "should check if class member is method before calling" do
       lua = get_lua %q{
@@ -28,7 +28,7 @@ describe CodeGenerator do
         end
         A.member
       }
-      lua.split('\n')[-2].should eq "local _ = (type(A.member) == \"function\" and A.member() or A.member);"
+      lua.split('\n')[-2].should eq "local _ = (type(A.Member) == \"function\" and A.Member() or A.Member);"
     end
     it "should check if referenced variable is method before calling" do
       lua = get_lua %q{
@@ -37,7 +37,7 @@ describe CodeGenerator do
         end
         something
       }
-      lua.split('\n')[-2].should eq "local _ = (type(something) == \"function\" and something() or something);"
+      lua.split('\n')[-2].should eq "local _ = (type(Something) == \"function\" and Something() or Something);"
     end
     it "should support basic single inheritance" do
       lua = get_lua %q{

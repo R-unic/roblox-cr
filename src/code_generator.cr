@@ -121,7 +121,7 @@ class CodeGenerator
         raise "Unhandled visibility modifier: #{node.modifier}"
       end
     when Var, Global
-      append node.name
+      append to_pascal node.name
     when UninitializedVar
       raise "Uninitialized variables are not supported."
     when ExceptionHandler
@@ -289,10 +289,10 @@ class CodeGenerator
     when NamedArgument
       walk node.value
     when Arg
-      append node.name
+      append to_pascal node.name
     when Def
-      node.name = node.name.gsub('?', "")
-      if class_member ? node.name != "initialize" : true
+      node.name = to_pascal node.name.gsub('?', "")
+      if class_member ? node.name != "Initialize" : true
         append "function "
         if class_member
           @current_class_members << [node.as ASTNode, node.as ASTNode]
@@ -340,7 +340,7 @@ class CodeGenerator
       append " or "
       walk node.right
     when Call
-      node.name = node.name.gsub('?', "")
+      node.name = to_pascal node.name.gsub('?', "")
       if bin_op?(node.name)
         walk_bin_op node
       elsif un_op?(node.name)
@@ -350,8 +350,12 @@ class CodeGenerator
         append ")"
       elsif postfix?(node.name)
         walk_postfix node
-      elsif node.name == "getter" || node.name == "setter" || node.name == "property"
-        @current_class_members << [node.args.first, node].as Array(ASTNode)
+      elsif node.name == "Getter" || node.name == "Setter" || node.name == "Property"
+        decl = node.args.first.as(TypeDeclaration)
+        var = decl.var.as(Var)
+        var.name = to_pascal var.name
+        decl.var = var
+        @current_class_members << [decl, node].as Array(ASTNode)
       else
         walk_fn_call node, class_member, class_node
       end
@@ -360,29 +364,38 @@ class CodeGenerator
     when ClassDef
       walk_class_def node, class_member, class_node
     when InstanceVar
+      node.name = to_pascal node.name
       if save_value
         @current_class_instance_vars << node
       else
-        parent_node = nil
         member_data = @current_class_members.find do |member_list|
           _, call = member_list
+          return false unless call.is_a?(Call)
           decl_node = call.as(Call).args.first
           matching = false
           case decl_node
           when TypeDeclaration
             name = walk decl_node.var
-            chop name.as(String).size
-            matching = name == node.name.gsub(/@/, "")
+            if name.is_a?(String)
+              name = to_pascal name
+              chop name.size
+              matching = name == to_pascal node.name.gsub(/@/, "")
+            else
+              raise "wtf"
+            end
           end
           matching
         end
-        walk_class_member_assignment member_data[0], member_data[1], class_node unless member_data.nil?
+        unless member_data.nil?
+          decl_node = member_data.first
+          walk_class_member_assignment decl_node, member_data[1], class_node
+        end
       end
     when ClassVar
       if class_node.is_a?(ClassDef)
-        append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
+        to_pascal append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
       else
-        append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
+        to_pascal append node.name.gsub(/@@/, "#{class_node.not_nil!.name}.")
       end
     when TypeDeclaration
       walk node.var, class_member, class_node, save_value
@@ -529,7 +542,7 @@ class CodeGenerator
         newline
         append "self.writable"
       else
-        append macro_name
+        append macro_name.downcase
         append "s"
       end
       append "."
@@ -604,10 +617,11 @@ class CodeGenerator
     end
     @current_class_instance_vars.each_with_index do |instance_var, i|
       value = @current_class_instance_var_values[i]?
+      puts instance_var, value
       next if value.nil?
 
       append "self.private."
-      append instance_var.name.gsub(/@/, "")
+      append to_pascal instance_var.name.gsub(/@/, "")
       append " = "
       walk value, class_member: true, class_node: _class
       newline
@@ -627,13 +641,7 @@ class CodeGenerator
     end_block
     newline
     append "end"; newline
-    append "return self.getters[k] or self.accessors[k] or "
-    if _class.is_a?(ClassDef)
-      walk _class.as(ClassDef).name
-    else
-      walk _class.as(ModuleDef).name
-    end
-    append "[k]"
+    append "return self.getters[k] or self.accessors[k] or meta[k]"
     end_block
     newline
     append "end,"; newline
@@ -669,8 +677,8 @@ class CodeGenerator
 
   private def get_ctor(_class : T) forall T
     initializer_def = _class.as(T).body.is_a?(Expressions) ?
-      _class.as(T).body.as(Expressions).expressions.find { |expr| expr.is_a?(Def) && expr.as(Def).name == "initialize" }
-      : (_class.as(T).body.is_a?(Def) && _class.as(T).body.as(Def).name == "initialize" ? _class.as(T).body.as(Def) : nil)
+      _class.as(T).body.as(Expressions).expressions.find { |expr| expr.is_a?(Def) && expr.as(Def).name == "Initialize" }
+      : (_class.as(T).body.is_a?(Def) && _class.as(T).body.as(Def).name == "Initialize" ? _class.as(T).body.as(Def) : nil)
   end
 
   private def walk_ctor_args(_class : T) forall T
@@ -744,9 +752,11 @@ class CodeGenerator
   end
 
   private def walk_fn_call(node : Call, class_member : Bool, class_node : (ClassDef | ModuleDef)?)
-    def_name = node.name
-      .gsub(/puts/, "print")
-      .gsub(/sleep/, "wait")
+    def_name = (to_pascal node.name)
+      .gsub(/Puts/, "print")
+      .gsub(/Sleep/, "wait")
+      .gsub(/New/, "new")
+      .gsub(/Super/, "super")
 
     check_fn = node.args.size < 1 && def_name != "new"
     if !node.obj.nil? && node.obj.is_a?(Crystal::Path) && node.obj.as(Crystal::Path).names.first == "Rbx" # pascal case roblox methods
@@ -794,6 +804,7 @@ class CodeGenerator
         else
           raise "Unhandled object node for call: #{node.obj.class}"
         end
+        to_pascal obj_name
         call_op = "." if @class_names.includes?(obj_name)
       end
 
