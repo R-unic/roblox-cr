@@ -24,6 +24,10 @@ class CodeGenerator
     @out
   end
 
+  private def to_pascal(name : String)
+    name.split("_").map { |s| s.capitalize }.join ""
+  end
+
   private def append_dependencies
     if @testing
       append "package.path = \"#{ENV["RBXCR"]}/include/?.lua;\" .. package.path"
@@ -193,7 +197,6 @@ class CodeGenerator
         append "function "
         if class_member
           walk class_node.not_nil!.name
-          puts node.body
           append ":"
         end
         unless node.receiver.nil?
@@ -440,6 +443,12 @@ class CodeGenerator
   private def walk_fn_call(node : Call)
     def_name = node.name.gsub(/puts/, "print")
     check_fn = node.args.size < 1 && def_name != "new"
+
+    if !node.obj.nil? && node.obj.is_a?(Crystal::Path) && node.obj.as(Crystal::Path).names.first == "Rbx"
+      def_name = to_pascal def_name
+      node.obj.as(Crystal::Path).names.shift
+    end
+
     if @macros.includes?(def_name)
       append "Crystal."
       append def_name
