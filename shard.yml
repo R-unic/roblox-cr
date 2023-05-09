@@ -5,8 +5,8 @@ authors:
   - R-unic <roleyspersonal@gmail.com>
 
 targets:
-  roblox-cr:
-    main: src/roblox-cr.cr
+  rbxcr:
+    main: src/main.cr
 
 dependencies:
   readline:
