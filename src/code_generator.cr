@@ -61,6 +61,7 @@ class CodeGenerator
   end
 
   private def to_pascal(name : String)
+    return name if !!(name =~ /\A([A-Z][a-z_0-9]*)+\z/)
     name.split("_").map(&.capitalize).join ""
   end
 
