@@ -64,5 +64,11 @@ describe CodeGenerator do
       lines.shift.should eq "end"
       lines.shift.should eq "print(Fib(10))"
     end
+    it "should write debug info when calling Crystal.error" do
+      lines = get_lua_lines %q{
+        raise "this is an exception"
+      }
+      lines.shift.should eq "Crystal.error(\"main_spec.cr\", 2, 9, \"this is an exception\")"
+    end
   end
 end
