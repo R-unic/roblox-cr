@@ -1,7 +1,9 @@
 ![build](https://github.com/Paragon-Studios/roblox-cr/actions/workflows/crystal.yml/badge.svg)
 # roblox-cr
 
-roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of Crystal code and converts it into Lua.
+roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of Crystal code and converts it into Lua.<br>
+It's pretty unfinished, pretty undocumented, and should probably never be used lol. It's a good project to learn how to make a source-to-source compiler though.<br>
+If you would like to contribute to or make something like this but only need the help to, consider contacting us in [our Discord](https://discord.gg/7Up7E66yZZ) server.
 
 ## Example (from [examples/fibonacci](https://github.com/Paragon-Studios/roblox-cr/blob/master/examples/fibonacci/src/client/main.client.cr))
 Source
