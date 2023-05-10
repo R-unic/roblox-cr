@@ -36,8 +36,7 @@ print(Fib(10))
 
 ## Gotchas
 
-All identifiers are converted to PascalCase during compilation. This is due to Crystal not allowing the use of PascalCase identifiers for method names and class members. This means you need to be mindful of naming conflicts.<br>
-Say you have a class, `A`, and you create a new instance of that class using `A.new` and assign it to a variable called `a`. The `A` class name will be overwritten by the `a` variable.<br>
+All identifiers are converted to PascalCase during compilation. This is due to Crystal not allowing the use of PascalCase identifiers for method names and class members. This means you need to be mindful of naming conflicts. Say you have a class, `A`, and you create a new instance of that class using `A.new` and assign it to a variable called `a`. The `A` class name will be overwritten by the `a` variable.<br>
 If you have any better solutions, please make a pull request.
 
 ## Likely to be added
