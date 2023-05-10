@@ -51,12 +51,11 @@ describe CodeGenerator do
       lines.shift.should eq "end"
       lines.shift.should eq "local _ = (type(Something) == \"function\" and Something() or Something);"
     end
-    it "should support basic single inheritance" do
+    it "should ternary ifs and function defs" do
       lines = get_lua_lines %q{
         def fib(n : Int) : Int
           n <= 1 ? n : (fib(n - 1) + fib(n - 2))
         end
-
         puts fib 10 #=> 55
       }
 
