@@ -70,5 +70,15 @@ describe CodeGenerator do
       }
       lines.shift.should eq "Crystal.error(\"main_spec.cr\", 2, 9, \"this is an exception\")"
     end
+    it "should properly index arrays" do
+      lines = get_lua_lines %q{
+        a = ['h', 'e', 'l', 'l', 'o']
+        puts a[0..2] # he
+        puts a[3] # l
+      }
+      lines.shift.should eq "A = Crystal.array {\"h\", \"e\", \"l\", \"l\", \"o\"}"
+      lines.shift.should eq "print(A[(Crystal.range(0, 2)) + 1])"
+      lines.shift.should eq "print(A[(3) + 1])"
+    end
   end
 end
