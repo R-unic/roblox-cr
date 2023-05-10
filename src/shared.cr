@@ -6,8 +6,7 @@
 # like codegen, things that are at
 # the bottom of the dependency chain.
 enum Exit
-  FailedToWriteDefaultConfig = 0x000002 # cli stuff
-  FailedToWriteDefaultProject = 0x000004
+  FailedToWrite = 0x000004
   FailedToCreateStructure = 0x000008
 
   InputInvalid = 0x000016
