@@ -769,7 +769,7 @@ class CodeGenerator
       .gsub(/New/, "new")
       .gsub(/Super/, "super")
 
-    check_fn = node.args.size < 1 && def_name != "new"
+    check_fn = node.args.size < 1 && def_name != "new" && node.block.nil?
     if !node.obj.nil? && node.obj.is_a?(Crystal::Path) && node.obj.as(Crystal::Path).names.first == "Rbx" # pascal case roblox methods
       def_name = to_pascal def_name
       node.obj.as(Crystal::Path).names.shift
@@ -800,7 +800,7 @@ class CodeGenerator
         append "("
         walk node.obj.not_nil! unless node.obj.nil?
         append ", " unless node.obj.nil? && check_fn
-        walk_call_args node, check_fn
+        walk_call_args node, node.block.nil? && check_fn
         append ")"
       end
     else
@@ -860,7 +860,7 @@ class CodeGenerator
       end
 
       append "("
-      walk_call_args node, check_fn
+      walk_call_args node, check_fn || !node.block.nil?
       append ")"
       if check_fn
         append " or "
