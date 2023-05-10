@@ -9,6 +9,10 @@ install:
 	shards $(BUILD_CMD) --error-trace --release
 	cp bin/rbxcr $(INSTALL_DIR)/rbxcr
 	chmod +x $(INSTALL_DIR)/rbxcr
+	crystal spec -v
+
+test:
+	crystal spec -v
 
 dev:
 	crystal $(BUILD_CMD)
