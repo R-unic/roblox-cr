@@ -7,14 +7,16 @@ local function assertType(v, t)
   assert(typeof(v) == t, "Expected 'string', got '" .. typeof(v) .. "'")
 end
 
-if not string.split then
-  string.split = function(s, delimiter)
-    local result = {}
-    for match in (s..delimiter):gmatch("(.-)"..delimiter) do
-      table.insert(result, match)
-    end
-    return result
+string.Split = function(s, delimiter)
+  local result = {}
+  for match in (s..delimiter):gmatch("(.-)"..delimiter) do
+    table.insert(result, match)
   end
+  return result
+end
+
+string.EndsWith = function(str, suffix)
+  return suffix == "" or str:sub(-suffix:len()) == suffix
 end
 
 mt.__add = function(a, b) --concatenate

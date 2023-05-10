@@ -909,7 +909,7 @@ class CodeGenerator
     node.args.each { |arg| walk arg }
     append ")"
     dont_sub_classes = [StringLiteral, CharLiteral, RegexLiteral, StringInterpolation]
-    append " - 1" unless !node.args.empty? && dont_sub_classes.includes?(node.args.first.class)
+    append " + 1" unless !node.args.empty? && dont_sub_classes.includes?(node.args.first.class)
     append right
   end
 

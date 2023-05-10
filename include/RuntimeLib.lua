@@ -6,6 +6,7 @@ local nonRbxVersions = {
 local meta = {}
 local function include(moduleName) --must be called before Crystal variable is declared
   local module = nonRbxVersions[_VERSION] and require(moduleName) or require(script.Parent[moduleName])
+  if type(module) ~= "table" then return end
   for k, v in pairs(module) do
     meta[k] = v
   end
@@ -14,6 +15,10 @@ end
 include "String"
 include "Array"
 local Crystal = setmetatable({}, { __index = meta })
+
+function Crystal.require(module)
+
+end
 
 function Crystal.isA(value, type)
   if typeof(value) == "table" then
@@ -47,7 +52,46 @@ function Crystal.range(from, to)
   for i = from, to do
     table.insert(res, i)
   end
-  return res
+  return setmetatable(res, {
+    __index = {
+      __class = "Range"
+    },
+    __add = function(_, b)
+      local first = res[1] + b
+      local last = res[#res] + b
+      return Crystal.range(first, last)
+    end;
+    __sub = function(_, b)
+      local first = res[1] - b
+      local last = res[#res] - b
+      return Crystal.range(first, last)
+    end;
+    __mul = function(_, b)
+      local first = res[1] * b
+      local last = res[#res] * b
+      return Crystal.range(first, last)
+    end;
+    __div = function(_, b)
+      local first = res[1] / b
+      local last = res[#res] / b
+      return Crystal.range(first, last)
+    end;
+    __pow = function(_, b)
+      local first = res[1] ^ b
+      local last = res[#res] ^ b
+      return Crystal.range(first, last)
+    end;
+    __mod = function(_, b)
+      local first = res[1] % b
+      local last = res[#res] % b
+      return Crystal.range(first, last)
+    end;
+    __unm = function()
+      local first = -res[1]
+      local last = -res[#res]
+      return Crystal.range(first, last)
+    end;
+  })
 end
 
 function Crystal.times(amount, callback)
@@ -89,10 +133,6 @@ Crystal.to_i64 = to_i
 
 function Crystal.as(value)
   return value
-end
-
-function Crystal.require(module)
-
 end
 
 return Crystal

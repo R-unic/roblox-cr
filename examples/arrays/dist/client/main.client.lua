@@ -6,8 +6,8 @@ print(Names:Join(", "))
 print(Names:Map(function(Arg0)
 	Arg0:EndsWith("jorgenson")
 end):Join(", "))
-print(Names[(1) - 1])
-print(Names[(Crystal.range(0, 3)) - 1])
+print(Names[(1) + 1])
+print(Names[(Crystal.range(0, 3)) + 1])
 Hash = {
 	["value"] = true
 }
