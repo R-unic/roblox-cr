@@ -136,7 +136,7 @@ module CLI
   def self.init_project
     project_name = Readline.readline bold("What is the name of your project? "), add_history: true
     init_git = (Readline.readline(bold("Do you want to initialize a git repository? (y/n) "), add_history: true) || "n").downcase == "y"
-    add_snippets = (Readline.readline(bold("Do you want to add default code snippets? (y/n) "), add_history: true) || "n").downcase == "y"
+    add_editorconfig = (Readline.readline(bold("Do you want to add an editor config file? (y/n) "), add_history: true) || "n").downcase == "y"
 
     # Create the directory structure
     return if project_name.nil?
@@ -169,7 +169,25 @@ module CLI
       abort "Error parsing config: #{ex.message}", Exit::InvalidConfig.value
     end
 
-    `git init #{project_name}/` if init_git
+    File.write File.join(project_name, "/.editorconfig"), %q{
+      root = true
+
+      [*.cr]
+      charset = utf-8
+      end_of_line = lf
+      insert_final_newline = true
+      indent_style = space
+      indent_size = 2
+      trim_trailing_whitespace = true
+    } if add_editorconfig
+
+    if init_git
+      `git init #{project_name}/`
+      File.write File.join(project_name, "/.gitignore"), %q{
+        dist/
+        include/
+      }
+    end
     puts "Successfully initialized project."
   end
 end

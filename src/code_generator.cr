@@ -71,7 +71,9 @@ class CodeGenerator
       newline
     end
     append "local Crystal = require("
-    unless @testing
+    if @testing
+      append "\"RuntimeLib\")"
+    else
       case @generation_mode
       when GenerationMode::Client
         append "game.Players.LocalPlayer.PlayerScripts"
@@ -81,8 +83,6 @@ class CodeGenerator
         append "game.ReplicatedStorage"
       end
       append ".Crystal.include.RuntimeLib)"
-    else
-      append "\"RuntimeLib\")"
     end
     newline
   end
