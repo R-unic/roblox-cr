@@ -34,14 +34,28 @@ print(Fib(10))
 3. Compile using `rbxcr` if you're inside of your project folder, otherwise `rbxcr -D <project_dir>`
 4. Sync to Roblox using [Rojo](https://rojo.space/) or another syncing plugin.
 
+## Gotchas
+
+All identifiers are converted to PascalCase during compilation. This is due to Crystal not allowing the use of PascalCase identifiers for method names and class members. This means you need to be mindful of naming conflicts.<br>
+Say you have a class, `A`, and you create a new instance of that class using `A.new` and assign it to a variable called `a`. The `A` class name will be overwritten by the `a` variable.<br>
+If you have any better solutions, please make a pull request.
+
+## Likely to be added
+
+- Enums
+- `case`-`when` blocks
+- `*` (splat) operator for converting arrays to tuples
+
 ## Might be added
 
 - Macros
+- Annotations
 
 ## Will not be added
 
 - `loop` blocks
 - `out` keyword
+- Uninitialized variables
 
 ## Contributing
 
