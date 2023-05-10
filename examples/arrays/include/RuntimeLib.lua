@@ -1,19 +1,10 @@
-local nonRbxVersions = {
-  ["Lua 5.4"] = true;
-  ["Lua 5.3"] = true;
-}
-
-local meta = {}
-local function include(moduleName) --must be called before Crystal variable is declared
-  local module = nonRbxVersions[_VERSION] and require(moduleName) or require(script.Parent[moduleName])
-  for k, v in pairs(module) do
-    meta[k] = v
-  end
+if _VERSION == "Lua 5.4" then
+  require "String"
+else
+  require(script.Parent.String)
 end
 
-include "String"
-include "Array"
-local Crystal = setmetatable({}, { __index = meta })
+local Crystal = {}
 
 function Crystal.isA(value, type)
   if typeof(value) == "table" then

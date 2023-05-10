@@ -33,7 +33,7 @@ class CodeGenerator
   @current_class_instance_var_values = [] of ASTNode
   @current_class_includes = [] of String
   @class_names = [] of String
-  @macros = [
+  @runtime_macros = [
     "times", "each", "each_with_index", # looping methods
     "to_s", "to_f64", "to_f32", "to_f", "to_i64", "to_i32", "to_i", "as" # casting methods
   ]
@@ -220,7 +220,7 @@ class CodeGenerator
       append "}"
       newline
     when ArrayLiteral
-      append "{"
+      append "Crystal.array {"
       walk_node_list node.elements
       append "}"
     when HashLiteral
@@ -764,7 +764,7 @@ class CodeGenerator
       node.obj.as(Crystal::Path).names.shift
     end
 
-    if @macros.includes?(def_name) || (def_name == "super" && node.args.size > 0)
+    if @runtime_macros.includes?(def_name) || (def_name == "super" && node.args.size > 0)
       if def_name == "super"
         append "local superInstance = self.__super.new("
         walk_call_args node, check_fn
