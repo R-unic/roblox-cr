@@ -289,7 +289,8 @@ class CodeGenerator
       append ")"
       start_block
 
-      walk node.body
+      append "return " unless node.body.is_a?(Expressions)
+      walk node.body, def_member: true
 
       end_block
       newline

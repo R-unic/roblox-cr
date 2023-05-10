@@ -47,6 +47,16 @@ function Crystal.array(t)
     return res
   end
 
+  function self:Select(predicate)
+    local res = Crystal.array()
+    for i, v in pairs(base) do
+      if predicate(v, i) then
+        res:Push(v)
+      end
+    end
+    return res
+  end
+
   local meta = {}
   function meta.__bshl(_, element)
     self:Push(element)

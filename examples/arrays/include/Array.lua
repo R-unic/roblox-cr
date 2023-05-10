@@ -31,10 +31,28 @@ function Crystal.array(t)
     return table.concat(t, delim)
   end
 
+  function self:Slice(i, j)
+    local sliced = Crystal.array()
+    for k = i, j do
+      table.insert(sliced, base[k])
+    end
+    return sliced
+  end
+
   function self:Map(transform)
     local res = Crystal.array()
     for i, v in pairs(base) do
       res[i] = transform(v, i)
+    end
+    return res
+  end
+
+  function self:Select(predicate)
+    local res = Crystal.array()
+    for i, v in pairs(base) do
+      if predicate(v, i) then
+        self:Push(v)
+      end
     end
     return res
   end
@@ -45,8 +63,12 @@ function Crystal.array(t)
   end
 
   return setmetatable(self, {
-    __index = function(t, k)
-      return base[k] or t[k] or meta[k]
+    __index = function(_, k)
+      if typeof(k) == "table" and k.__class == "Range" then
+        return self:Slice(k[1], k[#k])
+      else
+        return base[k] or meta[k]
+      end
     end
   })
 end

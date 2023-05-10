@@ -53,6 +53,9 @@ function Crystal.range(from, to)
     table.insert(res, i)
   end
   return setmetatable(res, {
+    __index = {
+      __class = "Range"
+    },
     __add = function(_, b)
       local first = res[1] + b
       local last = res[#res] + b
