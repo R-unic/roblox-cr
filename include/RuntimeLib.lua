@@ -28,6 +28,10 @@ function Crystal.isA(value, type)
   end
 end
 
+function Crystal.error(message, filename, line, pos)
+  error(("[%s:%u:%u]: %s"):format(message, line, pos, filename), 2)
+end
+
 function Crystal.list(t)
   local i = 0
   return function()

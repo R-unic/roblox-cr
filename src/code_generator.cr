@@ -35,10 +35,16 @@ class CodeGenerator
   @class_names = [] of String
   @runtime_macros = [
     "times", "each", "each_with_index", # looping methods
+    "push", "size", # array methods
     "to_s", "to_f64", "to_f32", "to_f", "to_i64", "to_i32", "to_i", "as" # casting methods
   ]
 
-  def initialize(source : String, @generation_mode : GenerationMode, @testing : Bool)
+  def initialize(
+    source : String,
+    @generation_mode : GenerationMode,
+    @testing : Bool,
+    @file_path : String
+  )
     begin
       parser = Parser.new(source)
       @ast = parser.parse
@@ -658,8 +664,11 @@ class CodeGenerator
 
     newline
     append "else"; start_block
-    append "Crystal." unless @testing
-    append "error(\"Attempt to assign to getter\", 2)"; end_block
+
+    append_error _class.name_location do
+      walk "Attempt to assign to getter"
+    end
+    end_block
 
     newline
     append "end"; end_block
@@ -753,6 +762,7 @@ class CodeGenerator
 
   private def walk_fn_call(node : Call, class_member : Bool, class_node : (ClassDef | ModuleDef)?)
     def_name = (to_pascal node.name)
+      .gsub(/Raise/, "Crystal.error")
       .gsub(/Puts/, "print")
       .gsub(/Sleep/, "wait")
       .gsub(/New/, "new")
@@ -764,7 +774,7 @@ class CodeGenerator
       node.obj.as(Crystal::Path).names.shift
     end
 
-    if @runtime_macros.includes?(def_name) || (def_name == "super" && node.args.size > 0)
+    if @runtime_macros.includes?(def_name) || (def_name == "super" && node.args.size > 0) || def_name == "Crystal.error"
       if def_name == "super"
         append "local superInstance = self.__super.new("
         walk_call_args node, check_fn
@@ -779,6 +789,10 @@ class CodeGenerator
         newline
         append "end"
         newline
+      elsif def_name == "Crystal.error"
+        append_error node.name_location do
+          walk_call_args node, check_fn
+        end
       else
         append "Crystal."
         append def_name
@@ -892,6 +906,16 @@ class CodeGenerator
     append left
     node.args.each { |arg| walk arg }
     append right
+  end
+
+  private def append_error(loc : Location? = nil, message : String? = nil, &block)
+    loc_filename = loc.nil? ? "" : loc.filename
+    filename = loc_filename == "" ? @file_path : loc_filename
+    line_number = loc.nil? ? "" : loc.line_number
+    column_number = loc.nil? ? "" : loc.column_number
+    append "Crystal.error(\"#{filename}\", #{line_number}, #{column_number}, "
+    yield
+    append ")"
   end
 
   private def postfix?(name : String) : Bool

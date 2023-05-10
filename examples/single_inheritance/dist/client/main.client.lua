@@ -1,17 +1,18 @@
-local Crystal = require(game.Players.LocalPlayer.PlayerScripts.Crystal.include.RuntimeLib)
+package.path = "/home/runic/Dev/crystal/roblox-cr/include/?.lua;" .. package.path
+local Crystal = require("RuntimeLib")
 --classdef
 Animal = {} do
 	Animal.__class = "Class"
 	
 	
 	function Animal:Dog()
-		return (typeof(self.Type) == "function" and self:Type() or self.Type) == "Dog"	
+		return (type(self.Type) == "function" and self:Type() or self.Type) == "Dog"	
 	end
 	function Animal.new(Type)
 		local include = {}
 		local meta = setmetatable(Animal, { __index = {} })
 		meta.__class = "Animal"
-		for mixin in Crystal.list(include) do
+		for _, mixin in pairs(include) do
 			for k, v in pairs(mixin) do
 				meta[k] = v			
 			end		
@@ -31,7 +32,7 @@ Animal = {} do
 				if not self.getters[k] and not self.accessors[k] and self.private[k] then
 					return nil				
 				end
-				return self.getters[k] or self.accessors[k] or Animal[k]			
+				return self.getters[k] or self.accessors[k] or meta[k]			
 			end,
 			__newindex = function(t, k, v)
 				if t.writable[k] or self.writable[k] or meta.writable[k] then
@@ -41,7 +42,7 @@ Animal = {} do
 						self.accessors[k] = v					
 					end				
 				else
-					Crystal.error("Attempt to assign to getter", 2)				
+					Crystal.error("examples/single_inheritance/src/client/main.client.cr", 1, 7, "Attempt to assign to getter")				
 				end			
 			end		
 		})	
@@ -62,7 +63,7 @@ Dog = {} do
 		local meta = setmetatable(Dog, { __index = Animal })
 		meta.__super = Animal
 		meta.__class = "Dog"
-		for mixin in Crystal.list(include) do
+		for _, mixin in pairs(include) do
 			for k, v in pairs(mixin) do
 				meta[k] = v			
 			end		
@@ -90,7 +91,7 @@ Dog = {} do
 				if not self.getters[k] and not self.accessors[k] and self.private[k] then
 					return nil				
 				end
-				return self.getters[k] or self.accessors[k] or Dog[k]			
+				return self.getters[k] or self.accessors[k] or meta[k]			
 			end,
 			__newindex = function(t, k, v)
 				if t.writable[k] or self.writable[k] or meta.writable[k] then
@@ -100,7 +101,7 @@ Dog = {} do
 						self.accessors[k] = v					
 					end				
 				else
-					Crystal.error("Attempt to assign to getter", 2)				
+					Crystal.error("examples/single_inheritance/src/client/main.client.cr", 12, 7, "Attempt to assign to getter")				
 				end			
 			end		
 		})	
@@ -111,7 +112,8 @@ Dog = Dog.new("Bentley", "Border Collie")
 
 print(Crystal.isA(Dog, "Dog"))
 print(Crystal.isA(Dog, "Animal"))
-print((typeof(Dog.Name) == "function" and Dog:Name() or Dog.Name), (typeof(Dog.Type) == "function" and Dog:Type() or Dog.Type))
-local _ = (typeof(Dog.Bark) == "function" and Dog:Bark() or Dog.Bark);
+print((type(Dog.Name) == "function" and Dog:Name() or Dog.Name), (type(Dog.Type) == "function" and Dog:Type() or Dog.Type))
+local _ = (type(Dog.Bark) == "function" and Dog:Bark() or Dog.Bark);
 
-print((typeof(Dog.Dog) == "function" and Dog:Dog() or Dog.Dog))
+print((type(Dog.Dog) == "function" and Dog:Dog() or Dog.Dog))
+Crystal.error("examples/single_inheritance/src/client/main.client.cr", 31, 1, "h")

@@ -28,3 +28,4 @@ puts dog.is_a?(Animal)
 puts dog.name, dog.type
 dog.bark
 puts dog.dog?
+raise "h"

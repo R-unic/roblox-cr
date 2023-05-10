@@ -14,7 +14,7 @@ module Transpiler
   )
     base_name = path.split(".cr").first
     source = File.read("#{base_name}.cr")
-    codegen = CodeGenerator.new(source, generation_mode, testing)
+    codegen = CodeGenerator.new(source, generation_mode, testing, path)
 
     extracted_path = base_name.split("#{config.root_dir}/").last
     out_path = "#{parent_dir}/#{config.out_dir}/#{extracted_path}.lua"
@@ -31,7 +31,7 @@ module Transpiler
       FileUtils.rm_r(project_include) if File.directory?(project_include)
       FileUtils.cp_r "#{ENV["RBXCR"]}/include/", project_include
     rescue ex : Exception
-      abort "Failed to copy Lua libraries: #{ex.message}", Exit::FailedToCopyInclude.value
+      abort "Failed to copy roblox-cr libraries: #{ex.message}", Exit::FailedToCopyInclude.value
     end
   end
 

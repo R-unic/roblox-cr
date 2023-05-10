@@ -1,7 +1,7 @@
 require "./spec_helper"
 
 def get_lua_lines(source : String) : Array(String)
-  result = CodeGenerator.new(source, GenerationMode::Module, testing: true)
+  result = CodeGenerator.new(source, GenerationMode::Module, testing: true, file_path: "main_spec.cr")
     .generate
     .split('\n')
     .map(&.strip)
