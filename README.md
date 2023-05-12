@@ -2,7 +2,7 @@
 # roblox-cr
 
 roblox-cr is a Crystal-to-Luau compiler for Roblox. It takes a string of Crystal code and converts it into Lua.<br>
-It's pretty unfinished, pretty undocumented, and should probably never be used lol. It's a good project to learn how to make a source-to-source compiler though.<br>
+It's pretty unfinished, pretty undocumented, and should probably never be used for anything. It's a good project to learn how to make a source-to-source compiler though.<br>
 If you would like to contribute to or make something like this but only need the help to, consider contacting us in [our Discord](https://discord.gg/7Up7E66yZZ) server.
 
 ## Example (from [examples/fibonacci](https://github.com/Paragon-Studios/roblox-cr/blob/master/examples/fibonacci/src/client/main.client.cr))
@@ -17,7 +17,7 @@ puts fib 10 #=> 55
 Output
 ```lua
 function Fib(N)
-	return (N <= 1 and N or Fib(N - 1) + Fib(N - 2))
+  return (N <= 1 and N or Fib(N - 1) + Fib(N - 2))
 end
 
 print(Fib(10))
